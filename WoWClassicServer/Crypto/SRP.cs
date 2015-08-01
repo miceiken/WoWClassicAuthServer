@@ -17,8 +17,6 @@ namespace WoWClassicServer.Crypto
             x = H(s.ToString(), I, p);
             v = BigInteger.ModPow(g, x, N);
 
-            // client->server (I)
-            // server->client (s, B)
             b = m_Rng.Next(19 * 8) % N;
             B = (k * v + BigInteger.ModPow(g, b, N)) % N;
         }
@@ -33,6 +31,7 @@ namespace WoWClassicServer.Crypto
         public BigInteger v { get; private set; }
         public BigInteger b { get; private set; }
         public BigInteger B { get; private set; }
+
         public BigInteger A { get; set; }
         public BigInteger u { get { return H(A.ToString(), B.ToString()); } }
         public BigInteger SessionKey { get { return H(BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N).ToString()); } }

@@ -64,14 +64,14 @@ namespace WoWClassicServer.AuthServer
                 {
                     var command = (AuthCommand)br.ReadByte();
 
-                    Console.WriteLine("Received command: {0} - Length: {1}", Enum.GetName(typeof(AuthCommand), command), bytesRead);
+                    Console.WriteLine("Command({1}): {0}", Enum.GetName(typeof(AuthCommand), command), bytesRead);
                     if (m_CommandHandlers.ContainsKey(command))
                     {
                         if (!m_CommandHandlers[command](br))
                             Console.WriteLine("Failed to handle command {0}", command);
                     }
                     else
-                        Console.WriteLine("Unknown packet. Length: {0}", bytesRead);
+                        Console.WriteLine("Command({0}): (!) Unknown", bytesRead);
                 }
             }
             m_Server.Clients.Remove(this);
@@ -111,10 +111,6 @@ namespace WoWClassicServer.AuthServer
                 bw.Write(new byte[16]);
                 bw.Write((byte)0); // security flags
 
-                foreach (var b in ms.ToArray())
-                    Console.Write(b.ToString("X2"));
-                Console.WriteLine();
-
                 m_Socket.Send(ms.ToArray());
             }
 
@@ -124,6 +120,7 @@ namespace WoWClassicServer.AuthServer
         public bool HandleLogonProof(BinaryReader br)
         {
             var alp = AuthLogonProof.Read(br);
+            Console.WriteLine(alp.ToString());
 
             // https://github.com/cmangos/mangos-classic/blob/master/src/realmd/AuthSocket.cpp#L603
             m_SRP.A = new BigInteger(alp.A);

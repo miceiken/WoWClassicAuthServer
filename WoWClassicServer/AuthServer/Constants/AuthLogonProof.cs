@@ -19,6 +19,12 @@ namespace WoWClassicServer.AuthServer.Constants
         public byte nKeys;
         public byte unk;
 
+        public override string ToString()
+        {
+            return "A=" + string.Join(" ", A.Select(b => b.ToString("X2"))) + ", M1=" + string.Join(" ", M1.Select(b => b.ToString("X2")))
+                + ", CRC=" + string.Join(" ", CRC.Select(b => b.ToString("X2"))) + ", nKeys=" + nKeys;
+        }
+
         public static AuthLogonProof Read(BinaryReader br)
         {
             var alp = new AuthLogonProof();
