@@ -16,7 +16,7 @@ namespace WoWClassicServer.AuthServer.Constants
         public byte Version3;                   // 0x9
         public ushort Build;                    // 0xA
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public byte[] Platform;                   // 0xC
+        public byte[] Platform;                 // 0xC
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
         public byte[] OS;                       // 0x10
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]

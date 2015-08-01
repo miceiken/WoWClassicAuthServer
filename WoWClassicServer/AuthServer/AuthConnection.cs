@@ -17,7 +17,7 @@ namespace WoWClassicServer.AuthServer
             m_Socket = socket;
             m_Server = server;
 
-            CommandHandlers = new Dictionary<AuthCommand, CommandHandler>()
+            m_CommandHandlers = new Dictionary<AuthCommand, CommandHandler>()
             {
                 { AuthCommand.CMD_AUTH_LOGON_CHALLENGE, HandleLogonChallenge },
                 { AuthCommand.CMD_AUTH_LOGON_PROOF, HandleLogonProof },
@@ -32,10 +32,10 @@ namespace WoWClassicServer.AuthServer
         private readonly Socket m_Socket;
         private readonly AuthServer m_Server;
 
-        private readonly Dictionary<AuthCommand, CommandHandler> CommandHandlers;
+        private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
 
         private Thread m_ThreadReceive;
-        private byte[] m_RecvBuffer = new byte[2048];
+        private byte[] m_RecvBuffer = new byte[1024];
 
         public void OnAccept()
         {
@@ -59,9 +59,9 @@ namespace WoWClassicServer.AuthServer
                     var command = (AuthCommand)br.ReadByte();
 
                     Console.WriteLine("Received command: {0} - Length: {1}", Enum.GetName(typeof(AuthCommand), command), bytesRead);
-                    if (CommandHandlers.ContainsKey(command))
+                    if (m_CommandHandlers.ContainsKey(command))
                     {
-                        if (!CommandHandlers[command](br))
+                        if (!m_CommandHandlers[command](br))
                             Console.WriteLine("Failed to handle command {0}", command);
                     }
                     else
