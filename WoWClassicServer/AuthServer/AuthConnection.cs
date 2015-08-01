@@ -4,7 +4,11 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Linq;
 using WoWClassicServer.AuthServer.Constants;
+using WoWClassicServer.Crypto;
+using System.Text;
+using System.Numerics;
 
 namespace WoWClassicServer.AuthServer
 {
@@ -17,13 +21,14 @@ namespace WoWClassicServer.AuthServer
             m_Socket = socket;
             m_Server = server;
 
+            // TODO: make these static? less overhead
             m_CommandHandlers = new Dictionary<AuthCommand, CommandHandler>()
             {
-                { AuthCommand.CMD_AUTH_LOGON_CHALLENGE, HandleLogonChallenge },
-                { AuthCommand.CMD_AUTH_LOGON_PROOF, HandleLogonProof },
-                { AuthCommand.CMD_AUTH_RECONNECT_CHALLENGE, HandleReconnectChallenge },
-                { AuthCommand.CMD_AUTH_RECONNECT_PROOF, HandleReconnectProof },
-                { AuthCommand.CMD_REALM_LIST, HandleRealmlist },
+                { AuthCommand.AuthLogonChallenge, HandleLogonChallenge },
+                { AuthCommand.AuthLogonProof, HandleLogonProof },
+                { AuthCommand.AuthReconnectChallenge, HandleReconnectChallenge },
+                { AuthCommand.AuthReconnectProof, HandleReconnectProof },
+                { AuthCommand.RealmList, HandleRealmlist },
             };
 
             OnAccept();
@@ -31,6 +36,7 @@ namespace WoWClassicServer.AuthServer
 
         private readonly Socket m_Socket;
         private readonly AuthServer m_Server;
+        private SRP m_SRP;
 
         private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
 
@@ -80,14 +86,34 @@ namespace WoWClassicServer.AuthServer
             var alc = AuthLogonChallenge.Read(br);
             Console.WriteLine(alc.ToString());
 
+            m_SRP = new SRP(alc.I, string.Join("", SRP.Sha1Hash(alc.I + ":" + alc.I).Select(b => b.ToString("X2"))));
+            var B = m_SRP.B.ToByteArray();
+            Array.Resize(ref B, 32);
+
+            var N = m_SRP.N.ToByteArray();
+            Array.Resize(ref N, 32);
+
+            var s = m_SRP.s.ToByteArray();
+            Array.Resize(ref s, 32);
+
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
-                bw.Write((byte)AuthCommand.CMD_AUTH_LOGON_CHALLENGE);
+                bw.Write((byte)AuthCommand.AuthLogonChallenge);
                 bw.Write((byte)0x0);
                 bw.Write((byte)AuthResult.WOW_SUCCESS); // TODO: Check for suspension/ipban/accountban
+                bw.Write(B);
+                bw.Write((byte)1);
+                bw.Write(m_SRP.g.ToByteArray(), 0, 1);
+                bw.Write((byte)32);
+                bw.Write(N);
+                bw.Write(s);
+                bw.Write(new byte[16]);
+                bw.Write((byte)0); // security flags
 
-                // Insert voodoo shit with SRP6 here
+                foreach (var b in ms.ToArray())
+                    Console.Write(b.ToString("X2"));
+                Console.WriteLine();
 
                 m_Socket.Send(ms.ToArray());
             }
@@ -97,7 +123,19 @@ namespace WoWClassicServer.AuthServer
 
         public bool HandleLogonProof(BinaryReader br)
         {
-            return false;
+            var alp = AuthLogonProof.Read(br);
+
+            // https://github.com/cmangos/mangos-classic/blob/master/src/realmd/AuthSocket.cpp#L603
+            m_SRP.A = new BigInteger(alp.A);
+            m_SRP.M_c = new BigInteger(alp.M1);
+
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                m_Socket.Send(ms.ToArray());
+            }
+
+            return true;
         }
 
         public bool HandleReconnectChallenge(BinaryReader br)

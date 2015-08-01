@@ -25,7 +25,7 @@ namespace WoWClassicServer.AuthServer.Constants
         public uint IP;                         // 0x1C
         public byte I_len;                      // 0x20
 
-        public string Account;
+        public string I;
 
         public static AuthLogonChallenge Read(BinaryReader br)
         {
@@ -53,7 +53,7 @@ namespace WoWClassicServer.AuthServer.Constants
             ch.IP = BitConverter.ToUInt32(br.ReadBytes(4), 0);
             ch.I_len = br.ReadByte();
 
-            ch.Account = new string(br.ReadChars(ch.I_len));
+            ch.I = new string(br.ReadChars(ch.I_len));
 
             return ch;
         }
@@ -63,7 +63,7 @@ namespace WoWClassicServer.AuthServer.Constants
             return "Error=" + Error + ", Size=" + Size + ", GameName=" + Encoding.ASCII.GetString(GameName) + ", Version1=" + Version1 + ", Version2=" + Version2
                 + ", Version3=" + Version3 + ", Build=" + Build + ", Platform=" + Encoding.ASCII.GetString(Platform) + ", OS=" + Encoding.ASCII.GetString(OS)
                 + ", Country=" + Encoding.ASCII.GetString(Country) + " TimeZone=" + TimezoneBias + ", IP=" + IP
-                + ", AcctLen=" + I_len + ", Acct=" + Account;
+                + ", I_len=" + I_len + ", I=" + I;
         }
     }
 }
