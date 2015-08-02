@@ -42,14 +42,20 @@ namespace WoWClassicServer.Crypto
         public BigInteger M_c { get; set; }
         public BigInteger M_s { get { return H(A.ToByteArray(), M_c.ToByteArray(), K_s.ToByteArray()); } } // Proof
 
+        public void SetBinary(out BigInteger field, byte[] val)
+        {
+            //Array.Reverse(val);
+            field = new BigInteger(AppendBytes(val));
+        }
+
         public BigInteger H(params string[] args)
         {
-            return new BigInteger(Sha1Hash(string.Join(":", args)));
+            return new BigInteger(AppendBytes(Sha1Hash(string.Join(":", args))));
         }
 
         public BigInteger H(params byte[][] args)
         {
-            return new BigInteger(Sha1Hash(string.Join(":", args.Select(b => BytesToString(b)))));
+            return new BigInteger(AppendBytes(Sha1Hash(string.Join(":", args.Select(b => BytesToString(b))))));
         }
 
         private static string BytesToString(byte[] bytes)
@@ -60,22 +66,20 @@ namespace WoWClassicServer.Crypto
         public static byte[] Sha1Hash(string s)
         {
             byte[] bytes = Encoding.ASCII.GetBytes(s);
-            var sha1 = SHA256.Create();
+            var sha1 = SHA1.Create();
             return sha1.ComputeHash(bytes);
         }
 
         public static byte[] Sha1Hash(byte[] bytes)
         {
-            var sha1 = SHA256.Create();
+            var sha1 = SHA1.Create();
             return sha1.ComputeHash(bytes);
         }
 
-        private static byte[] PrependBytes(byte[] bytes, byte prepender = 0x0)
+        // http://stackoverflow.com/a/5649264
+        private static byte[] AppendBytes(byte[] bytes)
         {
-            var newBytes = new byte[bytes.Length + 1];
-            newBytes[0] = prepender;
-            Array.Copy(bytes, 0, newBytes, 1, bytes.Length);
-            return newBytes;
+            return bytes.Concat(new byte[] { 0 }).ToArray();
         }
     }
 }

@@ -38,6 +38,6 @@ namespace WoWClassicServer.AuthServer.Constants
             return alp;
         }
 
-        public const int SizeConst = 0x77;
+        public const int SizeConst = 0x49;
     }
 }

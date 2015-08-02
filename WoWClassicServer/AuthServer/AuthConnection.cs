@@ -140,7 +140,7 @@ namespace WoWClassicServer.AuthServer
                 bw.Write((byte)AuthResult.WOW_SUCCESS); // TODO: Check for suspension/ipban/accountban
                 bw.Write(B);
                 bw.Write((byte)1);
-                bw.Write(m_SRP.g.ToByteArray(), 0, 1);
+                bw.Write(m_SRP.g.ToByteArray());
                 bw.Write((byte)32);
                 bw.Write(N);
                 bw.Write(s);
@@ -162,8 +162,11 @@ namespace WoWClassicServer.AuthServer
             m_ALP = AuthLogonProof.Read(br);
             Console.WriteLine(m_ALP.ToString());
 
-            m_SRP.A = new BigInteger(m_ALP.A);
-            m_SRP.M_c = new BigInteger(m_ALP.M1);
+            BigInteger A, M_c;
+            m_SRP.SetBinary(out A, m_ALP.A);
+            m_SRP.A = A;
+            m_SRP.SetBinary(out M_c, m_ALP.M1);
+            m_SRP.M_c = M_c;
 
             Console.WriteLine("K_s: {0}", m_SRP.K_s);
             // TODO: Check M_c == M_s
