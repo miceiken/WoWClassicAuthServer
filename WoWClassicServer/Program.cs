@@ -10,6 +10,8 @@ namespace WoWClassicServer
 
         private static void Main(string[] args)
         {
+            Console.Title = "WoWAuthServer";
+
             for (var i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -42,6 +44,7 @@ namespace WoWClassicServer
             var ep = new IPEndPoint(BindAddress, BindPort);
             srv.Listen(ep);
             Console.WriteLine("Server is now listening at {0}:{1}", ep.Address, ep.Port);
+
             Console.ReadKey();
         }
 

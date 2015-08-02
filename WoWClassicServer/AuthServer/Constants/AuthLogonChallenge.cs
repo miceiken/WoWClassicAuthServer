@@ -24,8 +24,7 @@ namespace WoWClassicServer.AuthServer.Constants
         public uint TimezoneBias;               // 0x18
         public uint IP;                         // 0x1C
         public byte I_len;                      // 0x20
-
-        public string I;
+        public string I;                        // 0x21
 
         public static AuthLogonChallenge Read(BinaryReader br)
         {
@@ -65,5 +64,7 @@ namespace WoWClassicServer.AuthServer.Constants
                 + ", Country=" + Encoding.ASCII.GetString(Country) + " TimeZone=" + TimezoneBias + ", IP=" + IP
                 + ", I_len=" + I_len + ", I=" + I;
         }
+
+        public const int SizeConst = 0x21;
     }
 }
