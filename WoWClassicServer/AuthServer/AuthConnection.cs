@@ -122,15 +122,27 @@ namespace WoWClassicServer.AuthServer
             Console.WriteLine(m_ALC.ToString());
 
             // TODO: This is where we would get the password from database
-            m_SRP = new SRP(m_ALC.I, string.Join("", SRP.Sha1Hash(m_ALC.I + ":" + m_ALC.I).Select(b => b.ToString("X2"))));
-            var B = m_SRP.B.ToByteArray();
-            Array.Resize(ref B, 32);
+            m_SRP = new SRP(m_ALC.I, string.Join("", SRP.Sha1Hash(Encoding.ASCII.GetBytes(m_ALC.I + ":" + m_ALC.I)).Select(b => b.ToString("X2"))));
 
-            var N = m_SRP.N.ToByteArray();
-            Array.Resize(ref N, 32);
+            Console.WriteLine("I={0}", m_ALC.I);
+            Console.WriteLine("p={0}", string.Join("", SRP.Sha1Hash(Encoding.ASCII.GetBytes(m_ALC.I + ":" + m_ALC.I)).Select(b => b.ToString("X2"))));
+            Console.Write("v=");
+            SRP.PrintBytes(m_SRP.v.ToProperByteArray());
 
-            var s = m_SRP.s.ToByteArray();
-            Array.Resize(ref s, 32);
+            var B = m_SRP.B.ToProperByteArray().Pad(32);
+            Console.Write("B=");
+            SRP.PrintBytes(B);
+
+            var N = m_SRP.N.ToProperByteArray().Pad(32);
+            Console.Write("N=");
+            SRP.PrintBytes(N);
+
+            var s = m_SRP.s.ToProperByteArray().Pad(32);            
+            Console.Write("s=");
+            SRP.PrintBytes(s);
+
+            Console.Write("g=");
+            SRP.PrintBytes(m_SRP.g.ToByteArray());
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
@@ -147,6 +159,8 @@ namespace WoWClassicServer.AuthServer
                 bw.Write(new byte[16]);
                 bw.Write((byte)0); // security flags
 
+                Thread.Sleep(100);
+
                 m_Socket.Send(ms.ToArray());
             }
 
@@ -162,22 +176,29 @@ namespace WoWClassicServer.AuthServer
             m_ALP = AuthLogonProof.Read(br);
             Console.WriteLine(m_ALP.ToString());
 
-            BigInteger A, M_c;
-            m_SRP.SetBinary(out A, m_ALP.A);
-            m_SRP.A = A;
-            m_SRP.SetBinary(out M_c, m_ALP.M1);
-            m_SRP.M_c = M_c;
+            m_SRP.A = m_ALP.A.ToPositiveBigInteger();
+            m_SRP.M_c = m_ALP.M1.ToPositiveBigInteger();
 
-            Console.WriteLine("K_s: {0}", m_SRP.K_s);
-            // TODO: Check M_c == M_s
-            Console.WriteLine("M_c: {0}", m_SRP.M_c);
-            Console.WriteLine("M_s: {0}", m_SRP.M_s);
+            Console.Write("A=");
+            SRP.PrintBytes(m_SRP.A.ToProperByteArray());
+
+            Console.Write("M_c=");
+            SRP.PrintBytes(m_SRP.M_c.ToProperByteArray());
+
+            Console.Write("K_s=");
+            SRP.PrintBytes(m_SRP.K_s.ToProperByteArray());
+
+            Console.Write("M_s=");
+            SRP.PrintBytes(m_SRP.M_s.ToProperByteArray());
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
                 if (!WriteProof(bw, m_ALC.Build))
                     return false;
+
+                Thread.Sleep(100);
+
                 m_Socket.Send(ms.ToArray());
             }
 

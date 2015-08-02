@@ -17,11 +17,14 @@ namespace WoWClassicServer.Crypto
 
         public SRP(string I, string p)
         {
-            s = m_Rng.Next(2 * 8) % N;
-            x = H(BytesToString(s.ToByteArray()), I, p);
-            v = BigInteger.ModPow(g, x, N);
+            //s = m_Rng.Next(int.MaxValue) % N;
+            s = BigInteger.Parse("0BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9", NumberStyles.HexNumber);
+            x = H(s.ToProperByteArray(), Encoding.ASCII.GetBytes(I), Encoding.ASCII.GetBytes(p));
+            //v = BigInteger.ModPow(g, x, N);
+            v = BigInteger.Parse("02D536375F9E68F5049DCA0D2E9DCAE482B854F00B7A6689DEAEE33BC83320998", NumberStyles.HexNumber);
 
-            b = m_Rng.Next(19 * 8) % N;
+            //b = m_Rng.Next(int.MaxValue) % N;
+            b = BigInteger.Parse("01705509458079758617995494716578076552495725229055527278653649485839533168055");
             B = (k * v + BigInteger.ModPow(g, b, N)) % N;
         }
 
@@ -37,37 +40,45 @@ namespace WoWClassicServer.Crypto
         public BigInteger B { get; private set; }
 
         public BigInteger A { get; set; }
-        public BigInteger u { get { return H(A.ToByteArray(), B.ToByteArray()); } }
-        public BigInteger K_s { get { return H(BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N).ToByteArray()); } } // SessionKey
+        public BigInteger u { get { return H(A.ToProperByteArray(), B.ToProperByteArray()); } }
+        public BigInteger K_s { get { return Interleave(H(BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N).ToProperByteArray())); } } // SessionKey
         public BigInteger M_c { get; set; }
-        public BigInteger M_s { get { return H(A.ToByteArray(), M_c.ToByteArray(), K_s.ToByteArray()); } } // Proof
-
-        public void SetBinary(out BigInteger field, byte[] val)
-        {
-            //Array.Reverse(val);
-            field = new BigInteger(AppendBytes(val));
-        }
-
-        public BigInteger H(params string[] args)
-        {
-            return new BigInteger(AppendBytes(Sha1Hash(string.Join(":", args))));
-        }
+        public BigInteger M_s { get { return H(A.ToProperByteArray(), M_c.ToProperByteArray(), K_s.ToProperByteArray()); } } // Proof
 
         public BigInteger H(params byte[][] args)
         {
-            return new BigInteger(AppendBytes(Sha1Hash(string.Join(":", args.Select(b => BytesToString(b))))));
+            return Sha1Hash(Encoding.ASCII.GetBytes(string.Join("", args.Select(bytes => bytes.Select(b => b.ToString("X2")))))).ToPositiveBigInteger();
         }
 
-        private static string BytesToString(byte[] bytes)
+        // http://www.ietf.org/rfc/rfc2945.txt
+        // Chapter 3.1
+        public BigInteger Interleave(BigInteger K_s)
         {
-            return string.Join("", bytes.Select(b => b.ToString("X2")));
-        }
+            // Remove all leading 0-bytes
+            var T = K_s.ToProperByteArray().SkipWhile(b => b == 0).ToArray();
+            // Needs to be an even length, skip 1 byte if not
+            if (T.Length % 2 == 1)
+                T = T.Skip(1).ToArray();
+            var E = new byte[T.Length / 2];
+            var F = new byte[T.Length / 2];
+            for (int i = 0, E_c = 0, F_c = 0; i < T.Length; i++)
+            {
+                if (i % 2 == 0)
+                    E[E_c++] = T[i];
+                else
+                    F[F_c++] = T[i];
+            }
 
-        public static byte[] Sha1Hash(string s)
-        {
-            byte[] bytes = Encoding.ASCII.GetBytes(s);
-            var sha1 = SHA1.Create();
-            return sha1.ComputeHash(bytes);
+            var G = Sha1Hash(E);
+            var H = Sha1Hash(F);
+            var result = new byte[40];
+            for (int i = 0, r_c = 0; i < result.Length / 2; i++)
+            {
+                result[r_c++] = G[i];
+                result[r_c++] = H[i];
+            }
+
+            return result.ToPositiveBigInteger();
         }
 
         public static byte[] Sha1Hash(byte[] bytes)
@@ -76,10 +87,33 @@ namespace WoWClassicServer.Crypto
             return sha1.ComputeHash(bytes);
         }
 
-        // http://stackoverflow.com/a/5649264
-        private static byte[] AppendBytes(byte[] bytes)
+        public static void PrintBytes(byte[] bytes)
         {
-            return bytes.Concat(new byte[] { 0 }).ToArray();
+            Console.WriteLine(string.Join("", bytes.Select(b => b.ToString("X2"))));
+        }
+    }
+
+    public static class BigIntegerExtensions
+    {
+        // ToByteArray appends a 0x00-byte to positive integers
+        public static byte[] ToProperByteArray(this BigInteger b)
+        {
+            var bytes = b.ToByteArray();
+            if (b.Sign == -1 || (bytes.Length > 1 && bytes[bytes.Length - 1] == 0))
+                Array.Resize(ref bytes, bytes.Length - 1);
+            return bytes;
+        }
+
+        // http://stackoverflow.com/a/5649264
+        public static BigInteger ToPositiveBigInteger(this byte[] bytes)
+        {
+            return new BigInteger(bytes.Concat(new byte[] { 0 }).ToArray());
+        }
+
+        public static byte[] Pad(this byte[] bytes, int count)
+        {
+            Array.Resize(ref bytes, count);
+            return bytes;
         }
     }
 }
