@@ -15,22 +15,30 @@ namespace WoWClassicServer.Crypto
          * Heavily inspired by https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#Implementation_example_in_Python
          */
 
+        // From password
         public SRP(string I, string p)
         {
-            s = GetRandomNumber(32) % N;
-            //s = "BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9".ToBigIntegerLittleEndian();
-            x = H(s.ToProperByteArray(), Encoding.ASCII.GetBytes(I), Encoding.ASCII.GetBytes(p));
-            v = BigInteger.ModPow(g, x, N);
-            //v = "2D536375F9E68F5049DCA0D2E9DCAE482B854F00B7A6689DEAEE33BC83320998".ToBigIntegerLittleEndian();
+            //s = GetRandomNumber(32) % N;
+            s = "BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9".ToBigIntegerLittleEndian();
+            //s = BigInteger.Parse("0BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9", NumberStyles.HexNumber);
+            x = H(s.ToProperByteArray().Reverse().ToArray(), H(Encoding.ASCII.GetBytes(I + ":" + p)).ToProperByteArray());
+            v = BigInteger.ModPow(g, x, N);;
 
-            b = GetRandomNumber(19) % N;
-            //b = "1705509458079758617995494716578076552495725229055527278653649485839533168055".ToBigIntegerLittleEndian(NumberStyles.None);
+            //b = GetRandomNumber(19) % N;
+            b = BigInteger.Parse("01705509458079758617995494716578076552495725229055527278653649485839533168055");
             B = (k * v + BigInteger.ModPow(g, b, N)) % N;
+        }
+
+        // From s and v
+        public SRP(BigInteger s, BigInteger v)
+        {
+            this.s = s;
+            this.v = v;
         }
 
         private RNGCryptoServiceProvider m_Rng = new RNGCryptoServiceProvider();
 
-        public BigInteger N { get; } = "894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7".ToBigIntegerLittleEndian();
+        public BigInteger N { get; } = BigInteger.Parse("0894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7", NumberStyles.HexNumber); //"894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7".ToBigIntegerLittleEndian();
         public BigInteger g { get; } = 7;
         public BigInteger k { get; } = 3;
         public BigInteger s { get; private set; }
@@ -47,7 +55,7 @@ namespace WoWClassicServer.Crypto
 
         public BigInteger H(params byte[][] args)
         {
-            return Sha1Hash(Encoding.ASCII.GetBytes(string.Join("", args.Select(bytes => bytes.Select(b => b.ToString("X2")))))).ToPositiveBigInteger();
+            return Sha1Hash(args.SelectMany(b => b).ToArray()).ToPositiveBigInteger();
         }
 
         // http://www.ietf.org/rfc/rfc2945.txt
@@ -100,7 +108,7 @@ namespace WoWClassicServer.Crypto
         }
     }
 
-    public static class BigIntegerExtensions
+    internal static class SRPHelperExtensions
     {
         public static BigInteger ToBigIntegerLittleEndian(this string value, NumberStyles style = NumberStyles.HexNumber)
         {
@@ -126,6 +134,11 @@ namespace WoWClassicServer.Crypto
         {
             Array.Resize(ref bytes, count);
             return bytes;
+        }
+
+        public static string ToHexString(this byte[] bytes)
+        {
+            return string.Join("", bytes.Select(b => b.ToString("X2")));
         }
     }
 }

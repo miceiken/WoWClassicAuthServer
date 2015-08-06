@@ -125,27 +125,34 @@ namespace WoWClassicServer.AuthServer
             Console.WriteLine(m_ALC.ToString());
 
             // TODO: This is where we would get the password from database
-            m_SRP = new SRP(m_ALC.I, string.Join("", SRP.Sha1Hash(Encoding.ASCII.GetBytes(m_ALC.I + ":" + m_ALC.I)).Select(b => b.ToString("X2"))));
+            m_SRP = new SRP(m_ALC.I, m_ALC.I);
 
-            Console.WriteLine("I={0}", m_ALC.I);
-            Console.WriteLine("p={0}", string.Join("", SRP.Sha1Hash(Encoding.ASCII.GetBytes(m_ALC.I + ":" + m_ALC.I)).Select(b => b.ToString("X2"))));
             Console.Write("v=");
-            SRP.PrintBytes(m_SRP.v.ToProperByteArray());
+            Console.WriteLine(m_SRP.v.ToString());
+            //SRP.PrintBytes(m_SRP.v.ToProperByteArray());
 
-            var B = m_SRP.B.ToProperByteArray().Pad(32);
+            Console.Write("b=");
+            Console.WriteLine(m_SRP.b.ToString());
+            //SRP.PrintBytes(m_SRP.b.ToProperByteArray());
+
+            var B = m_SRP.B.ToProperByteArray().Reverse().ToArray().Pad(32);
             Console.Write("B=");
-            SRP.PrintBytes(B);
+            Console.WriteLine(m_SRP.B.ToString());
+            //SRP.PrintBytes(B);
 
-            var N = m_SRP.N.ToProperByteArray().Pad(32);
+            var N = m_SRP.N.ToProperByteArray().Reverse().ToArray().Pad(32);
             Console.Write("N=");
-            SRP.PrintBytes(N);
+            Console.WriteLine(m_SRP.N.ToString());
+            //SRP.PrintBytes(N);
 
-            var s = m_SRP.s.ToProperByteArray().Pad(32);
+            var s = m_SRP.s.ToProperByteArray().Reverse().ToArray().Pad(32);
             Console.Write("s=");
-            SRP.PrintBytes(s);
+            Console.WriteLine(m_SRP.s.ToString());
+            //SRP.PrintBytes(s);
 
             Console.Write("g=");
-            SRP.PrintBytes(m_SRP.g.ToByteArray());
+            Console.WriteLine(m_SRP.g.ToString());
+            //SRP.PrintBytes(m_SRP.g.ToByteArray());
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
@@ -179,20 +186,25 @@ namespace WoWClassicServer.AuthServer
             m_ALP = AuthLogonProof.Read(br);
             Console.WriteLine(m_ALP.ToString());
 
-            m_SRP.A = m_ALP.A.ToPositiveBigInteger();
-            m_SRP.M_c = m_ALP.M1.ToPositiveBigInteger();
-
+            m_SRP.A = m_ALP.A.Reverse().ToArray().ToPositiveBigInteger();
+            //m_SRP.A = BigInteger.Parse("037942311652441254735256121593378067577952156466443555708135250200514500292964");
+            m_SRP.M_c = m_ALP.M1.Reverse().ToArray().ToPositiveBigInteger();
+            // A=37942311652441254735256121593378067577952156466443555708135250200514500292964
             Console.Write("A=");
-            SRP.PrintBytes(m_SRP.A.ToProperByteArray());
+            Console.WriteLine(m_SRP.A.ToString());
+            //SRP.PrintBytes(m_SRP.A.ToProperByteArray());
 
             Console.Write("M_c=");
-            SRP.PrintBytes(m_SRP.M_c.ToProperByteArray());
+            Console.WriteLine(m_SRP.M_c.ToString());
+            //SRP.PrintBytes(m_SRP.M_c.ToProperByteArray());
 
             Console.Write("K_s=");
-            SRP.PrintBytes(m_SRP.K_s.ToProperByteArray());
+            Console.WriteLine(m_SRP.K_s.ToString());
+            //SRP.PrintBytes(m_SRP.K_s.ToProperByteArray());
 
             Console.Write("M_s=");
-            SRP.PrintBytes(m_SRP.M_s.ToProperByteArray());
+            Console.WriteLine(m_SRP.M_s.ToString());
+            //SRP.PrintBytes(m_SRP.M_s.ToProperByteArray());
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
