@@ -42,6 +42,9 @@ namespace WoWClassicServer.AuthServer
         private AuthLogonProof m_ALP;
         private SRP m_SRP;
 
+        public string Username { get { return m_ALC.I; } }
+        public bool IsAuthenticated { get { return m_SRP != null && m_SRP.M_c == m_SRP.M_s; } }
+
         private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
 
         private Thread m_ThreadReceive;
@@ -75,7 +78,7 @@ namespace WoWClassicServer.AuthServer
                             Console.WriteLine("Failed to handle command {0}", command);
                     }
                     else
-                        Console.WriteLine("Command({0}): (!) Unknown", bytesRead);
+                        Console.WriteLine("Command({0}): {1} (!) Unknown", bytesRead, command);
                 }
             }
             m_Server.Clients.Remove(this);
@@ -137,7 +140,7 @@ namespace WoWClassicServer.AuthServer
             Console.Write("N=");
             SRP.PrintBytes(N);
 
-            var s = m_SRP.s.ToProperByteArray().Pad(32);            
+            var s = m_SRP.s.ToProperByteArray().Pad(32);
             Console.Write("s=");
             SRP.PrintBytes(s);
 
@@ -194,6 +197,9 @@ namespace WoWClassicServer.AuthServer
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
+                //if (!IsAuthenticated)
+                //    return false;
+
                 if (!WriteProof(bw, m_ALC.Build))
                     return false;
 

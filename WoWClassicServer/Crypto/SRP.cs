@@ -17,20 +17,20 @@ namespace WoWClassicServer.Crypto
 
         public SRP(string I, string p)
         {
-            //s = m_Rng.Next(int.MaxValue) % N;
-            s = BigInteger.Parse("0BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9", NumberStyles.HexNumber);
+            s = GetRandomNumber(32) % N;
+            //s = "BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9".ToBigIntegerLittleEndian();
             x = H(s.ToProperByteArray(), Encoding.ASCII.GetBytes(I), Encoding.ASCII.GetBytes(p));
-            //v = BigInteger.ModPow(g, x, N);
-            v = BigInteger.Parse("02D536375F9E68F5049DCA0D2E9DCAE482B854F00B7A6689DEAEE33BC83320998", NumberStyles.HexNumber);
+            v = BigInteger.ModPow(g, x, N);
+            //v = "2D536375F9E68F5049DCA0D2E9DCAE482B854F00B7A6689DEAEE33BC83320998".ToBigIntegerLittleEndian();
 
-            //b = m_Rng.Next(int.MaxValue) % N;
-            b = BigInteger.Parse("01705509458079758617995494716578076552495725229055527278653649485839533168055");
+            b = GetRandomNumber(19) % N;
+            //b = "1705509458079758617995494716578076552495725229055527278653649485839533168055".ToBigIntegerLittleEndian(NumberStyles.None);
             B = (k * v + BigInteger.ModPow(g, b, N)) % N;
         }
 
-        private Random m_Rng = new Random(Environment.TickCount);
+        private RNGCryptoServiceProvider m_Rng = new RNGCryptoServiceProvider();
 
-        public BigInteger N { get; } = BigInteger.Parse("0894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7", NumberStyles.HexNumber);
+        public BigInteger N { get; } = "894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7".ToBigIntegerLittleEndian();
         public BigInteger g { get; } = 7;
         public BigInteger k { get; } = 3;
         public BigInteger s { get; private set; }
@@ -81,6 +81,13 @@ namespace WoWClassicServer.Crypto
             return result.ToPositiveBigInteger();
         }
 
+        private BigInteger GetRandomNumber(uint bytes)
+        {
+            var data = new byte[bytes];
+            m_Rng.GetBytes(data);
+            return data.ToPositiveBigInteger();
+        }
+
         public static byte[] Sha1Hash(byte[] bytes)
         {
             var sha1 = SHA1.Create();
@@ -95,6 +102,11 @@ namespace WoWClassicServer.Crypto
 
     public static class BigIntegerExtensions
     {
+        public static BigInteger ToBigIntegerLittleEndian(this string value, NumberStyles style = NumberStyles.HexNumber)
+        {
+            return BigInteger.Parse(value, style).ToByteArray().Reverse().ToArray().ToPositiveBigInteger();
+        }
+
         // ToByteArray appends a 0x00-byte to positive integers
         public static byte[] ToProperByteArray(this BigInteger b)
         {
