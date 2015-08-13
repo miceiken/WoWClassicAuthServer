@@ -118,7 +118,7 @@ namespace WoWClassicServer.AuthServer
                 return false;
 
             m_ALC = AuthLogonChallenge.Read(br);
-            Console.WriteLine(m_ALC.ToString());
+            Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.I, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
 
             // TODO: This is where we would get the password from database
             m_SRP = new SRP(m_ALC.I, m_ALC.I);
@@ -151,7 +151,6 @@ namespace WoWClassicServer.AuthServer
                 return false;
 
             m_ALP = AuthLogonProof.Read(br);
-            Console.WriteLine(m_ALP.ToString());
 
             m_SRP.A = m_ALP.A.ToPositiveBigInteger();
             m_SRP.M_c = m_ALP.M1.ToPositiveBigInteger();
