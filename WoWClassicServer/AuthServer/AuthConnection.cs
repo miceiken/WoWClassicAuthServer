@@ -183,28 +183,13 @@ namespace WoWClassicServer.AuthServer
 
         public byte[] LoadRealmlist()
         {
-            string[] realms = new string[]
-            {
-                "KIRTH YOU SUCK",
-                "I WON"
-            };
-
             using (var rs = new MemoryStream())
             using (var rw = new BinaryWriter(rs))
             {
                 rw.Write((uint)0);                          // Unused value
-                rw.Write((byte)realms.Length);              // Amount of realms
-                for (int i = 0; i < realms.Length; i++)
-                {
-                    rw.Write((uint)RealmType.PvP);          // Realm type
-                    rw.Write((byte)RealmFlags.Recommended); // Realm flags
-                    rw.Write(Encoding.ASCII.GetBytes(realms[i] + '\0'));             // Realm name
-                    rw.Write(Encoding.ASCII.GetBytes("127.0.0.1:8085" + '\0'));      // Realm ip:port
-                    rw.Write(RealmPopulationPreset.Medium); // Realm population
-                    rw.Write((byte)i);                      // Amount of characters on realm
-                    rw.Write((byte)RealmTimezone.English);  // Realm timezone
-                    rw.Write((byte)0x00);                   // Unknown byte that follows each realm
-                }
+                rw.Write((byte)m_Server.Realms.Count);      // Amount of realms
+                foreach (var realm in m_Server.Realms)
+                    rw.Write(realm.ToByteArray());
                 rw.Write((ushort)0x2);                      // Unknown short at the end of the packet
 
                 return rs.ToArray();
@@ -220,7 +205,7 @@ namespace WoWClassicServer.AuthServer
                 bw.Write((byte)AuthCommand.RealmList);
                 bw.Write((ushort)realmInfo.Length);
                 bw.Write(realmInfo);
-                SRP.PrintBytes(ms.ToArray(), " ");
+
                 m_Socket.Send(ms.ToArray());
             }
 
