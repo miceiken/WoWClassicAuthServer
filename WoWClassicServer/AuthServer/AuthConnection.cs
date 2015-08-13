@@ -43,7 +43,7 @@ namespace WoWClassicServer.AuthServer
         private SRP m_SRP;
 
         public string Username { get { return m_ALC.I; } }
-        public bool IsAuthenticated { get { return m_SRP != null && m_SRP.M_c == m_SRP.GenerateClientProof(); } }
+        public bool IsAuthenticated { get { return m_SRP != null && m_SRP.ClientProof == m_SRP.GenerateClientProof(); } }
 
         private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
 
@@ -95,7 +95,7 @@ namespace WoWClassicServer.AuthServer
 
                     bw.Write((byte)AuthCommand.AuthLogonProof);     // cmd
                     bw.Write((byte)0);                              // error
-                    bw.Write(m_SRP.M_s.ToByteArray(), 0, 20);       // M2
+                    bw.Write(m_SRP.ServerProof.ToByteArray(), 0, 20);       // M2
                     bw.Write((uint)0x00);                           // unk2
 
                     return true;
@@ -129,12 +129,12 @@ namespace WoWClassicServer.AuthServer
                 bw.Write((byte)AuthCommand.AuthLogonChallenge);
                 bw.Write((byte)AuthResult.WOW_SUCCESS); // TODO: Check for suspension/ipban/accountban
                 bw.Write((byte)0x0);
-                bw.Write(m_SRP.B.ToProperByteArray().Pad(32));
+                bw.Write(m_SRP.ServerEphemeral.ToProperByteArray().Pad(32));
                 bw.Write((byte)1);
-                bw.Write(m_SRP.g.ToByteArray());
+                bw.Write(m_SRP.Generator.ToByteArray());
                 bw.Write((byte)32);
-                bw.Write(m_SRP.N.ToProperByteArray().Pad(32));
-                bw.Write(m_SRP.s.ToProperByteArray().Pad(32));
+                bw.Write(m_SRP.Modulus.ToProperByteArray().Pad(32));
+                bw.Write(m_SRP.Salt.ToProperByteArray().Pad(32));
                 bw.Write(new byte[16]);
                 bw.Write((byte)0);
 
@@ -152,8 +152,8 @@ namespace WoWClassicServer.AuthServer
 
             m_ALP = AuthLogonProof.Read(br);
 
-            m_SRP.A = m_ALP.A.ToPositiveBigInteger();
-            m_SRP.M_c = m_ALP.M1.ToPositiveBigInteger();
+            m_SRP.ClientEphemeral = m_ALP.A.ToPositiveBigInteger();
+            m_SRP.ClientProof = m_ALP.M1.ToPositiveBigInteger();
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))

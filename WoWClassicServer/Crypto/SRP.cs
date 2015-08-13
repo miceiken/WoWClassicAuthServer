@@ -7,78 +7,114 @@ using System.Text;
 
 namespace WoWClassicServer.Crypto
 {
-    public class SRP // TODO: Clean up and make decent names
+    public class SRP
     {
-        // From password
-        public SRP(string I, string p)
+        public SRP(string identifier, BigInteger salt, BigInteger verifier)
         {
-            this.I = I;
-            s = GetRandomNumber(32) % N;
-            x = H(s.ToProperByteArray(), H(Encoding.ASCII.GetBytes(I + ":" + p)).ToProperByteArray());
-            v = BigInteger.ModPow(g, x, N); ;
+            Identifier = identifier;
+            Salt = salt;
+            Verifier = verifier;
 
-            b = GetRandomNumber(19) % N;
-            B = (k * v + BigInteger.ModPow(g, b, N)) % N;
+            PrivateServerEphemeral = GetRandomNumber(19) % Modulus;
         }
 
-        // From s and v
-        public SRP(BigInteger s, BigInteger v)
+        public SRP(string identifier, string password)
         {
-            this.s = s;
-            this.v = v;
+            Identifier = identifier;
+            Salt = GetRandomNumber(32) % Modulus;
+            Verifier = GenerateVerifier(identifier, password);
+
+            PrivateServerEphemeral = GetRandomNumber(19) % Modulus;
         }
 
-        private RNGCryptoServiceProvider m_Rng = new RNGCryptoServiceProvider();
+        private static RNGCryptoServiceProvider m_Rng = new RNGCryptoServiceProvider();
 
-        public string I { get; private set; }
+        public string Identifier { get; private set; }                  // I
 
-        public BigInteger N { get; } = BigInteger.Parse("0894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7", NumberStyles.HexNumber); //"894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7".ToBigIntegerLittleEndian();
-        // Generator
-        public BigInteger g { get; } = 7;
-        //
-        public BigInteger k { get; } = 3;
-        // Salt
-        public BigInteger s { get; private set; }
-        public BigInteger x { get; private set; }
-        // Verifier
-        public BigInteger v { get; private set; }
-        public BigInteger b { get; private set; }
-        public BigInteger B { get; private set; }
+        public BigInteger Modulus { get; }                              // N
+            = BigInteger.Parse("0894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7", NumberStyles.HexNumber);
+        public BigInteger Generator { get; }                            // g
+            = 7;
 
-        public BigInteger A { get; set; }
-        public BigInteger u { get { return H(A.ToProperByteArray(), B.ToProperByteArray()); } }
-        public BigInteger S_s { get { return BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N); } }
-        public BigInteger K_s { get { return Interleave(S_s); } } // SessionKey
-        public BigInteger M_c { get; set; }
-        public BigInteger M_s { get { return H(A.ToProperByteArray(), M_c.ToProperByteArray(), K_s.ToProperByteArray()); } } // Proof
+        public BigInteger Multiplier { get; } = 3;                      // k
 
-        public BigInteger H(params byte[][] args)
+        public BigInteger PrivateKey { get; private set; }              // x
+
+        public BigInteger Verifier { get; private set; }                // v
+        public BigInteger PrivateServerEphemeral { get; private set; }  // b
+
+        public BigInteger Salt { get; private set; }                    // s
+
+        public BigInteger ClientEphemeral { get; set; }                 // A
+        public BigInteger ServerEphemeral                               // B
         {
-            return Sha1Hash(args.SelectMany(b => b).ToArray()).ToPositiveBigInteger();
+            get { return (Multiplier * Verifier + BigInteger.ModPow(Generator, PrivateServerEphemeral, Modulus)) % Modulus; }
         }
 
-        public BigInteger GenerateClientProof(/*BigInteger K_c*/)
+        public BigInteger SessionKey                                    // K_s
+        {
+            get { return GenerateSessionKey(ClientEphemeral, ServerEphemeral, PrivateServerEphemeral, Modulus, Verifier); }
+        }
+        public BigInteger ClientProof { get; set; }                     // M_c
+        public BigInteger ServerProof                                   // M_s
+        {
+            get { return GenerateServerProof(ClientEphemeral, ClientProof, SessionKey); }
+        }
+
+        public BigInteger GenerateClientProof()
+        {
+            return GenerateClientProof(Identifier, Modulus, Generator, Salt, SessionKey, ClientEphemeral, ServerEphemeral);
+        }
+
+        private BigInteger GenerateVerifier(string identifier, string password)
+        {
+            return GenerateVerifier(identifier, password, Modulus, Generator, Salt);
+        }
+
+        #region Static members
+
+        private static BigInteger GenerateVerifier(string identifier, string password, BigInteger modulus, BigInteger generator, BigInteger salt)
+        {
+            var privateKey = Hash(salt.ToProperByteArray(), Hash(Encoding.ASCII.GetBytes(identifier + ":" + password)).ToProperByteArray());
+            return BigInteger.ModPow(generator, privateKey, modulus);
+        }
+
+        private static BigInteger GenerateScrambler(BigInteger A, BigInteger B)
+        {
+            return Hash(A.ToProperByteArray(), B.ToProperByteArray());
+        }
+
+        private static BigInteger GenerateClientProof(string identifier, BigInteger modulus, BigInteger generator, BigInteger salt, BigInteger sessionKey, BigInteger A, BigInteger B)
         {
             // M = H(H(N) xor H(g), H(I), s, A, B, K)
-            var N_hash = Sha1Hash(N.ToProperByteArray());
-            var g_hash = Sha1Hash(g.ToProperByteArray());
-            var I_hash = Sha1Hash(Encoding.ASCII.GetBytes(I));
+            var N_hash = SHA1Hash(modulus.ToProperByteArray());
+            var g_hash = SHA1Hash(generator.ToProperByteArray());
 
             // H(N) XOR H(g)
             for (int i = 0, j = N_hash.Length; i < j; i++)
                 N_hash[i] ^= g_hash[i];
 
-            return H(N_hash, I_hash, s.ToProperByteArray(), A.ToProperByteArray(), B.ToProperByteArray(), K_s.ToProperByteArray() /*, K_c.ToProperByteArray()*/);
+            return Hash(N_hash, SHA1Hash(Encoding.ASCII.GetBytes(identifier)), salt.ToProperByteArray(), A.ToProperByteArray(), B.ToProperByteArray(), sessionKey.ToProperByteArray());
+        }
+
+        private static BigInteger GenerateSessionKey(BigInteger clientEphemeral, BigInteger serverEphemeral, BigInteger privateServerEphemeral, BigInteger modulus, BigInteger verifier)
+        {
+            return Interleave(BigInteger.ModPow(clientEphemeral * BigInteger.ModPow(verifier, GenerateScrambler(clientEphemeral, serverEphemeral), modulus), privateServerEphemeral, modulus));
+        }
+
+        private static BigInteger GenerateServerProof(BigInteger A, BigInteger clientProof, BigInteger sessionKey)
+        {
+            return Hash(A.ToProperByteArray(), clientProof.ToProperByteArray(), sessionKey.ToProperByteArray());
         }
 
         // http://www.ietf.org/rfc/rfc2945.txt
         // Chapter 3.1
-        public BigInteger Interleave(BigInteger K_s)
-        {            
-            var T = K_s.ToProperByteArray().SkipWhile(b => b == 0).ToArray(); // Remove all leading 0-bytes
+        private static BigInteger Interleave(BigInteger sessionKey)
+        {
+            var T = sessionKey.ToProperByteArray().SkipWhile(b => b == 0).ToArray(); // Remove all leading 0-bytes
             if ((T.Length & 0x1) == 0x1) T = T.Skip(1).ToArray(); // Needs to be an even length, skip 1 byte if not
-            var G = Sha1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x0).Select(i => T[i]).ToArray());
-            var H = Sha1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x1).Select(i => T[i]).ToArray());
+            var G = SHA1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x0).Select(i => T[i]).ToArray());
+            var H = SHA1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x1).Select(i => T[i]).ToArray());
 
             var result = new byte[40];
             for (int i = 0, r_c = 0; i < result.Length / 2; i++)
@@ -86,27 +122,34 @@ namespace WoWClassicServer.Crypto
                 result[r_c++] = G[i];
                 result[r_c++] = H[i];
             }
+            
 
             return result.ToPositiveBigInteger();
         }
 
-        private BigInteger GetRandomNumber(uint bytes)
+        private static BigInteger Hash(params byte[][] args)
+        {
+            return SHA1Hash(args.SelectMany(b => b).ToArray()).ToPositiveBigInteger();
+        }
+
+        #endregion
+
+        #region Helper functions
+
+        private static BigInteger GetRandomNumber(uint bytes)
         {
             var data = new byte[bytes];
             m_Rng.GetNonZeroBytes(data);
             return data.ToPositiveBigInteger();
         }
 
-        public static byte[] Sha1Hash(byte[] bytes)
+        private static byte[] SHA1Hash(byte[] bytes)
         {
             var sha1 = SHA1.Create();
             return sha1.ComputeHash(bytes);
         }
 
-        public static void PrintBytes(byte[] bytes, string sep = "")
-        {
-            Console.WriteLine(string.Join(sep, bytes.Select(b => b.ToString("X2"))));
-        }
+        #endregion
     }
 
     internal static class SRPHelperExtensions
@@ -124,12 +167,6 @@ namespace WoWClassicServer.Crypto
         public static BigInteger ToPositiveBigInteger(this byte[] bytes)
         {
             return new BigInteger(bytes.Concat(new byte[] { 0 }).ToArray());
-        }
-
-        public static byte[] Pad(this byte[] bytes, int count)
-        {
-            Array.Resize(ref bytes, count);
-            return bytes;
         }
     }
 }

@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace WoWClassicServer.AuthServer.Constants
+namespace WoWClassicServer.AuthServer
 {
     public struct RealmInfo
     {
