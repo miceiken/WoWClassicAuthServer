@@ -7,25 +7,17 @@ using System.Text;
 
 namespace WoWClassicServer.Crypto
 {
-    public class SRP
+    public class SRP // TODO: Clean up and make decent names
     {
-        /*
-         * SRP - Secure Remote Password
-         *  implemented by miceiken
-         * Heavily inspired by https://en.wikipedia.org/wiki/Secure_Remote_Password_protocol#Implementation_example_in_Python
-         */
-
         // From password
         public SRP(string I, string p)
         {
-            //s = GetRandomNumber(32) % N;
-            s = "BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9".ToBigIntegerLittleEndian();
-            //s = BigInteger.Parse("0BEA833881768877A7B8801DFE2C7DEEDDEA7860F57ABD04EFFCC672E67B462B9", NumberStyles.HexNumber);
-            x = H(s.ToProperByteArray().Reverse().ToArray(), H(Encoding.ASCII.GetBytes(I + ":" + p)).ToProperByteArray());
-            v = BigInteger.ModPow(g, x, N);;
+            this.I = I;
+            s = GetRandomNumber(32) % N;
+            x = H(s.ToProperByteArray(), H(Encoding.ASCII.GetBytes(I + ":" + p)).ToProperByteArray());
+            v = BigInteger.ModPow(g, x, N); ;
 
-            //b = GetRandomNumber(19) % N;
-            b = BigInteger.Parse("01705509458079758617995494716578076552495725229055527278653649485839533168055");
+            b = GetRandomNumber(19) % N;
             B = (k * v + BigInteger.ModPow(g, b, N)) % N;
         }
 
@@ -38,18 +30,25 @@ namespace WoWClassicServer.Crypto
 
         private RNGCryptoServiceProvider m_Rng = new RNGCryptoServiceProvider();
 
+        public string I { get; private set; }
+
         public BigInteger N { get; } = BigInteger.Parse("0894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7", NumberStyles.HexNumber); //"894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7".ToBigIntegerLittleEndian();
+        // Generator
         public BigInteger g { get; } = 7;
+        //
         public BigInteger k { get; } = 3;
+        // Salt
         public BigInteger s { get; private set; }
         public BigInteger x { get; private set; }
+        // Verifier
         public BigInteger v { get; private set; }
         public BigInteger b { get; private set; }
         public BigInteger B { get; private set; }
 
         public BigInteger A { get; set; }
         public BigInteger u { get { return H(A.ToProperByteArray(), B.ToProperByteArray()); } }
-        public BigInteger K_s { get { return Interleave(H(BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N).ToProperByteArray())); } } // SessionKey
+        public BigInteger S_s { get { return BigInteger.ModPow(A * BigInteger.ModPow(v, u, N), b, N); } }
+        public BigInteger K_s { get { return Interleave(S_s); } } // SessionKey
         public BigInteger M_c { get; set; }
         public BigInteger M_s { get { return H(A.ToProperByteArray(), M_c.ToProperByteArray(), K_s.ToProperByteArray()); } } // Proof
 
@@ -58,27 +57,29 @@ namespace WoWClassicServer.Crypto
             return Sha1Hash(args.SelectMany(b => b).ToArray()).ToPositiveBigInteger();
         }
 
+        public BigInteger GenerateClientProof(/*BigInteger K_c*/)
+        {
+            // M = H(H(N) xor H(g), H(I), s, A, B, K)
+            var N_hash = Sha1Hash(N.ToProperByteArray());
+            var g_hash = Sha1Hash(g.ToProperByteArray());
+            var I_hash = Sha1Hash(Encoding.ASCII.GetBytes(I));
+
+            // H(N) XOR H(g)
+            for (int i = 0, j = N_hash.Length; i < j; i++)
+                N_hash[i] ^= g_hash[i];
+
+            return H(N_hash, I_hash, s.ToProperByteArray(), A.ToProperByteArray(), B.ToProperByteArray(), K_s.ToProperByteArray() /*, K_c.ToProperByteArray()*/);
+        }
+
         // http://www.ietf.org/rfc/rfc2945.txt
         // Chapter 3.1
         public BigInteger Interleave(BigInteger K_s)
-        {
-            // Remove all leading 0-bytes
-            var T = K_s.ToProperByteArray().SkipWhile(b => b == 0).ToArray();
-            // Needs to be an even length, skip 1 byte if not
-            if (T.Length % 2 == 1)
-                T = T.Skip(1).ToArray();
-            var E = new byte[T.Length / 2];
-            var F = new byte[T.Length / 2];
-            for (int i = 0, E_c = 0, F_c = 0; i < T.Length; i++)
-            {
-                if (i % 2 == 0)
-                    E[E_c++] = T[i];
-                else
-                    F[F_c++] = T[i];
-            }
+        {            
+            var T = K_s.ToProperByteArray().SkipWhile(b => b == 0).ToArray(); // Remove all leading 0-bytes
+            if ((T.Length & 0x1) == 0x1) T = T.Skip(1).ToArray(); // Needs to be an even length, skip 1 byte if not
+            var G = Sha1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x0).Select(i => T[i]).ToArray());
+            var H = Sha1Hash(Enumerable.Range(0, T.Length).Where(i => (i & 0x1) == 0x1).Select(i => T[i]).ToArray());
 
-            var G = Sha1Hash(E);
-            var H = Sha1Hash(F);
             var result = new byte[40];
             for (int i = 0, r_c = 0; i < result.Length / 2; i++)
             {
@@ -92,7 +93,7 @@ namespace WoWClassicServer.Crypto
         private BigInteger GetRandomNumber(uint bytes)
         {
             var data = new byte[bytes];
-            m_Rng.GetBytes(data);
+            m_Rng.GetNonZeroBytes(data);
             return data.ToPositiveBigInteger();
         }
 
@@ -102,24 +103,19 @@ namespace WoWClassicServer.Crypto
             return sha1.ComputeHash(bytes);
         }
 
-        public static void PrintBytes(byte[] bytes)
+        public static void PrintBytes(byte[] bytes, string sep = "")
         {
-            Console.WriteLine(string.Join("", bytes.Select(b => b.ToString("X2"))));
+            Console.WriteLine(string.Join(sep, bytes.Select(b => b.ToString("X2"))));
         }
     }
 
     internal static class SRPHelperExtensions
     {
-        public static BigInteger ToBigIntegerLittleEndian(this string value, NumberStyles style = NumberStyles.HexNumber)
-        {
-            return BigInteger.Parse(value, style).ToByteArray().Reverse().ToArray().ToPositiveBigInteger();
-        }
-
         // ToByteArray appends a 0x00-byte to positive integers
         public static byte[] ToProperByteArray(this BigInteger b)
         {
             var bytes = b.ToByteArray();
-            if (b.Sign == -1 || (bytes.Length > 1 && bytes[bytes.Length - 1] == 0))
+            if (b.Sign == 1 && (bytes.Length > 1 && bytes[bytes.Length - 1] == 0))
                 Array.Resize(ref bytes, bytes.Length - 1);
             return bytes;
         }
@@ -134,11 +130,6 @@ namespace WoWClassicServer.Crypto
         {
             Array.Resize(ref bytes, count);
             return bytes;
-        }
-
-        public static string ToHexString(this byte[] bytes)
-        {
-            return string.Join("", bytes.Select(b => b.ToString("X2")));
         }
     }
 }

@@ -43,7 +43,7 @@ namespace WoWClassicServer.AuthServer
         private SRP m_SRP;
 
         public string Username { get { return m_ALC.I; } }
-        public bool IsAuthenticated { get { return m_SRP != null && m_SRP.M_c == m_SRP.M_s; } }
+        public bool IsAuthenticated { get { return m_SRP != null && m_SRP.M_c == m_SRP.GenerateClientProof(); } }
 
         private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
 
@@ -96,9 +96,7 @@ namespace WoWClassicServer.AuthServer
                     bw.Write((byte)AuthCommand.AuthLogonProof);     // cmd
                     bw.Write((byte)0);                              // error
                     bw.Write(m_SRP.M_s.ToByteArray(), 0, 20);       // M2
-                    bw.Write((uint)0x00);                           // unk1
                     bw.Write((uint)0x00);                           // unk2
-                    bw.Write((ushort)0x00);                         // unk3
 
                     return true;
                 case 8606:                                          // 2.4.3
@@ -113,8 +111,6 @@ namespace WoWClassicServer.AuthServer
             }
         }
 
-        //public void LoadRealmlist() { }
-
         public bool HandleLogonChallenge(BinaryReader br, int packetLength)
         {
             // Sanity check
@@ -127,49 +123,20 @@ namespace WoWClassicServer.AuthServer
             // TODO: This is where we would get the password from database
             m_SRP = new SRP(m_ALC.I, m_ALC.I);
 
-            Console.Write("v=");
-            Console.WriteLine(m_SRP.v.ToString());
-            //SRP.PrintBytes(m_SRP.v.ToProperByteArray());
-
-            Console.Write("b=");
-            Console.WriteLine(m_SRP.b.ToString());
-            //SRP.PrintBytes(m_SRP.b.ToProperByteArray());
-
-            var B = m_SRP.B.ToProperByteArray().Reverse().ToArray().Pad(32);
-            Console.Write("B=");
-            Console.WriteLine(m_SRP.B.ToString());
-            //SRP.PrintBytes(B);
-
-            var N = m_SRP.N.ToProperByteArray().Reverse().ToArray().Pad(32);
-            Console.Write("N=");
-            Console.WriteLine(m_SRP.N.ToString());
-            //SRP.PrintBytes(N);
-
-            var s = m_SRP.s.ToProperByteArray().Reverse().ToArray().Pad(32);
-            Console.Write("s=");
-            Console.WriteLine(m_SRP.s.ToString());
-            //SRP.PrintBytes(s);
-
-            Console.Write("g=");
-            Console.WriteLine(m_SRP.g.ToString());
-            //SRP.PrintBytes(m_SRP.g.ToByteArray());
-
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write((byte)AuthCommand.AuthLogonChallenge);
-                bw.Write((byte)0x0);
                 bw.Write((byte)AuthResult.WOW_SUCCESS); // TODO: Check for suspension/ipban/accountban
-                bw.Write(B);
+                bw.Write((byte)0x0);
+                bw.Write(m_SRP.B.ToProperByteArray().Pad(32));
                 bw.Write((byte)1);
                 bw.Write(m_SRP.g.ToByteArray());
                 bw.Write((byte)32);
-                bw.Write(N);
-                bw.Write(s);
+                bw.Write(m_SRP.N.ToProperByteArray().Pad(32));
+                bw.Write(m_SRP.s.ToProperByteArray().Pad(32));
                 bw.Write(new byte[16]);
-                bw.Write((byte)0); // security flags
-
-                Thread.Sleep(100);
+                bw.Write((byte)0);
 
                 m_Socket.Send(ms.ToArray());
             }
@@ -186,36 +153,17 @@ namespace WoWClassicServer.AuthServer
             m_ALP = AuthLogonProof.Read(br);
             Console.WriteLine(m_ALP.ToString());
 
-            m_SRP.A = m_ALP.A.Reverse().ToArray().ToPositiveBigInteger();
-            //m_SRP.A = BigInteger.Parse("037942311652441254735256121593378067577952156466443555708135250200514500292964");
-            m_SRP.M_c = m_ALP.M1.Reverse().ToArray().ToPositiveBigInteger();
-            // A=37942311652441254735256121593378067577952156466443555708135250200514500292964
-            Console.Write("A=");
-            Console.WriteLine(m_SRP.A.ToString());
-            //SRP.PrintBytes(m_SRP.A.ToProperByteArray());
-
-            Console.Write("M_c=");
-            Console.WriteLine(m_SRP.M_c.ToString());
-            //SRP.PrintBytes(m_SRP.M_c.ToProperByteArray());
-
-            Console.Write("K_s=");
-            Console.WriteLine(m_SRP.K_s.ToString());
-            //SRP.PrintBytes(m_SRP.K_s.ToProperByteArray());
-
-            Console.Write("M_s=");
-            Console.WriteLine(m_SRP.M_s.ToString());
-            //SRP.PrintBytes(m_SRP.M_s.ToProperByteArray());
+            m_SRP.A = m_ALP.A.ToPositiveBigInteger();
+            m_SRP.M_c = m_ALP.M1.ToPositiveBigInteger();
 
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
-                //if (!IsAuthenticated)
-                //    return false;
+                if (!IsAuthenticated) // TODO: Send response
+                    return false;
 
                 if (!WriteProof(bw, m_ALC.Build))
                     return false;
-
-                Thread.Sleep(100);
 
                 m_Socket.Send(ms.ToArray());
             }
@@ -233,9 +181,50 @@ namespace WoWClassicServer.AuthServer
             return false;
         }
 
+        public byte[] LoadRealmlist()
+        {
+            string[] realms = new string[]
+            {
+                "KIRTH YOU SUCK",
+                "I WON"
+            };
+
+            using (var rs = new MemoryStream())
+            using (var rw = new BinaryWriter(rs))
+            {
+                rw.Write((uint)0);                          // Unused value
+                rw.Write((byte)realms.Length);              // Amount of realms
+                for (int i = 0; i < realms.Length; i++)
+                {
+                    rw.Write((uint)RealmType.PvP);          // Realm type
+                    rw.Write((byte)RealmFlags.Recommended); // Realm flags
+                    rw.Write(Encoding.ASCII.GetBytes(realms[i] + '\0'));             // Realm name
+                    rw.Write(Encoding.ASCII.GetBytes("127.0.0.1:8085" + '\0'));      // Realm ip:port
+                    rw.Write(RealmPopulationPreset.Medium); // Realm population
+                    rw.Write((byte)i);                      // Amount of characters on realm
+                    rw.Write((byte)RealmTimezone.English);  // Realm timezone
+                    rw.Write((byte)0x00);                   // Unknown byte that follows each realm
+                }
+                rw.Write((ushort)0x2);                      // Unknown short at the end of the packet
+
+                return rs.ToArray();
+            }
+        }
+
         public bool HandleRealmlist(BinaryReader br, int packetLength)
         {
-            return false;
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                var realmInfo = LoadRealmlist();
+                bw.Write((byte)AuthCommand.RealmList);
+                bw.Write((ushort)realmInfo.Length);
+                bw.Write(realmInfo);
+                SRP.PrintBytes(ms.ToArray(), " ");
+                m_Socket.Send(ms.ToArray());
+            }
+
+            return true;
         }
     }
 }

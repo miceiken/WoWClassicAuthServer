@@ -52,6 +52,7 @@
     <Compile Include="AuthServer\Constants\AuthLogonProof.cs" />
     <Compile Include="AuthServer\Constants\AuthResult.cs" />
     <Compile Include="AuthServer\AuthServer.cs" />
+    <Compile Include="AuthServer\Constants\RealmInfo.cs" />
     <Compile Include="Crypto\SRP.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
