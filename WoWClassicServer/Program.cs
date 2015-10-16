@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Net;
 
-namespace WoWClassicServer
+namespace WoWClassicAuthServer
 {
     class Program
     {

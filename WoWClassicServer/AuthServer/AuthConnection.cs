@@ -5,13 +5,13 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Linq;
-using WoWClassicServer.AuthServer.Constants;
-using WoWClassicServer.Crypto;
+using WoWClassicAuthServer.AuthServer.Constants;
+using WoWClassicAuthServer.Crypto;
 using System.Text;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace WoWClassicServer.AuthServer
+namespace WoWClassicAuthServer.AuthServer
 {
     public delegate bool CommandHandler(BinaryReader br, int packetLength);
 
@@ -127,7 +127,7 @@ namespace WoWClassicServer.AuthServer
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write((byte)AuthCommand.AuthLogonChallenge);
-                bw.Write((byte)AuthResult.WOW_SUCCESS); // TODO: Check for suspension/ipban/accountban
+                bw.Write((byte)AuthResult.Success); // TODO: Check for suspension/ipban/accountban
                 bw.Write((byte)0x0);
                 bw.Write(m_SRP.ServerEphemeral.ToProperByteArray().Pad(32));
                 bw.Write((byte)1);

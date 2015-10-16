@@ -4,7 +4,7 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace WoWClassicServer.AuthServer.Constants
+namespace WoWClassicAuthServer.AuthServer.Constants
 {
     public unsafe struct AuthLogonChallenge
     {

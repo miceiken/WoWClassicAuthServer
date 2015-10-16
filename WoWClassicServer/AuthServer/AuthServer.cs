@@ -2,9 +2,9 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using WoWClassicServer.AuthServer.Constants;
+using WoWClassicAuthServer.AuthServer.Constants;
 
-namespace WoWClassicServer.AuthServer
+namespace WoWClassicAuthServer.AuthServer
 {
     public class AuthServer
     {
