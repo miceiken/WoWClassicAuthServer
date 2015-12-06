@@ -11,6 +11,7 @@ using System.Text;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using WoWClassic.Common;
+using WoWClassic.Cluster;
 
 namespace WoWClassic.Login.AuthServer
 {
@@ -129,8 +130,11 @@ namespace WoWClassic.Login.AuthServer
             m_ALC = AuthLogonChallenge.Read(br);
             Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.I, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
 
-            // TODO: This is where we would get the password from database
-            m_SRP = new SRP(m_ALC.I, m_ALC.I);
+            // Account doesn't exist!
+            if (!LoginService.ExistsAccount(m_ALC.I))
+                return false;
+
+            m_SRP = LoginService.GetAccountSecurity(m_ALC.I);
 
             using (var ms = new MemoryStream())
             using (var bw = new GenericWriter(ms))

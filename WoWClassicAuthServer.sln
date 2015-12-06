@@ -13,6 +13,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WoWClassic.Cluster", "WoWCl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WoWClassic.Gateway", "WoWClassic.Gateway\WoWClassic.Gateway.csproj", "{BCD92586-15D8-42A9-9B3C-54DF0603AFC2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WoWClassic.Web", "WoWClassic.Web\WoWClassic.Web.csproj", "{F33478BE-B386-4B81-AD20-A64860B35605}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WoWClassic.Datastore", "WoWClassic.Datastore\WoWClassic.Datastore.csproj", "{1F2C7E48-D78C-442F-85BB-0DB46F82500A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{BCD92586-15D8-42A9-9B3C-54DF0603AFC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BCD92586-15D8-42A9-9B3C-54DF0603AFC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BCD92586-15D8-42A9-9B3C-54DF0603AFC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F33478BE-B386-4B81-AD20-A64860B35605}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F33478BE-B386-4B81-AD20-A64860B35605}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F33478BE-B386-4B81-AD20-A64860B35605}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F33478BE-B386-4B81-AD20-A64860B35605}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F2C7E48-D78C-442F-85BB-0DB46F82500A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F2C7E48-D78C-442F-85BB-0DB46F82500A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F2C7E48-D78C-442F-85BB-0DB46F82500A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F2C7E48-D78C-442F-85BB-0DB46F82500A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

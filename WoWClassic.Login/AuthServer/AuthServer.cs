@@ -4,6 +4,11 @@ using System.Net.Sockets;
 using System.Threading;
 using WoWClassic.Common.Constants;
 using WoWClassic.Cluster;
+using WoWClassic.Datastore;
+using WoWClassic.Datastore.Login;
+using LinqToDB;
+using LinqToDB.Mapping;
+using System.IO;
 
 namespace WoWClassic.Login.AuthServer
 {
@@ -12,6 +17,8 @@ namespace WoWClassic.Login.AuthServer
         public AuthServer()
         {
             m_Listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+            InitTestDb();
         }
 
         private Socket m_Listener;
@@ -20,6 +27,18 @@ namespace WoWClassic.Login.AuthServer
         public LoginService Service { get; private set; } = new LoginService();
 
         public List<AuthConnection> Clients { get; private set; } = new List<AuthConnection>();
+
+        private void InitTestDb()
+        {
+            if (!File.Exists("Login.sqlite"))
+                using (var db = new DBLogin())
+                    db.CreateTable<Account>();
+            if (!LoginService.ExistsAccount("testuser"))
+                LoginService.CreateAccount("testuser", "test@test.com", "TestPass");
+
+            if (!LoginService.ExistsAccount("miceiken"))
+                LoginService.CreateAccount("miceiken", "test@test.com", "miceiken");
+        }
 
         public void Listen(IPEndPoint endpoint)
         {
