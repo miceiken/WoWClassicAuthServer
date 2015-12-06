@@ -5,16 +5,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Linq;
-using WoWClassicAuthServer.AuthServer.Constants;
-using WoWClassicAuthServer.Crypto;
+using WoWClassic.Common.Constants;
+using WoWClassic.Common.Crypto;
 using System.Text;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using WoWClassic.Common;
 
-namespace WoWClassicAuthServer.AuthServer
+namespace WoWClassic.Login.AuthServer
 {
-    public delegate bool CommandHandler(BinaryReader br, int packetLength);
-
     public class AuthConnection
     {
         public AuthConnection(Socket socket, AuthServer server)
@@ -22,15 +21,7 @@ namespace WoWClassicAuthServer.AuthServer
             m_Socket = socket;
             m_Server = server;
 
-            // TODO: make these static? less overhead
-            m_CommandHandlers = new Dictionary<AuthCommand, CommandHandler>()
-            {
-                { AuthCommand.AuthLogonChallenge, HandleLogonChallenge },
-                { AuthCommand.AuthLogonProof, HandleLogonProof },
-                { AuthCommand.AuthReconnectChallenge, HandleReconnectChallenge },
-                { AuthCommand.AuthReconnectProof, HandleReconnectProof },
-                { AuthCommand.RealmList, HandleRealmlist },
-            };
+            m_CommandHandlers = RegisterHandlers(this);
 
             OnAccept();
         }
@@ -49,6 +40,23 @@ namespace WoWClassicAuthServer.AuthServer
 
         private Thread m_ThreadReceive;
         private byte[] m_RecvBuffer = new byte[1024];
+
+        #region Packet Handler Reflection
+
+        private static Dictionary<AuthCommand, CommandHandler> RegisterHandlers(object instance)
+        {
+            var ret = new Dictionary<AuthCommand, CommandHandler>();
+            var type = instance.GetType();
+            foreach (var method in type.GetMethods())
+            {
+                var attr = method.GetCustomAttributes(typeof(PacketHandlerAttribute), false).Cast<PacketHandlerAttribute>().FirstOrDefault();
+                if (attr == null) continue;
+                ret.Add((AuthCommand)attr.PacketId, (CommandHandler)method.CreateDelegate(typeof(CommandHandler), instance));
+            }
+            return ret;
+        }
+
+        #endregion
 
         public void OnAccept()
         {
@@ -78,7 +86,7 @@ namespace WoWClassicAuthServer.AuthServer
                             Console.WriteLine("Failed to handle command {0}", command);
                     }
                     else
-                        Console.WriteLine("Command({0}): {1} (!) Unknown", bytesRead, command);
+                        Console.WriteLine("Command({0}): {1} (!) No handler", bytesRead, command);
                 }
             }
             m_Server.Clients.Remove(this);
@@ -111,6 +119,7 @@ namespace WoWClassicAuthServer.AuthServer
             }
         }
 
+        [PacketHandler(AuthCommand.AuthLogonChallenge)]
         public bool HandleLogonChallenge(BinaryReader br, int packetLength)
         {
             // Sanity check
@@ -124,19 +133,19 @@ namespace WoWClassicAuthServer.AuthServer
             m_SRP = new SRP(m_ALC.I, m_ALC.I);
 
             using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
+            using (var bw = new GenericWriter(ms))
             {
-                bw.Write((byte)AuthCommand.AuthLogonChallenge);
-                bw.Write((byte)AuthResult.Success); // TODO: Check for suspension/ipban/accountban
-                bw.Write((byte)0x0);
+                bw.Write(AuthCommand.AuthLogonChallenge);
+                bw.Write(AuthResult.Success); // TODO: Check for suspension/ipban/accountban
+                bw.Write<byte>(0);
                 bw.Write(m_SRP.ServerEphemeral.ToProperByteArray().Pad(32));
-                bw.Write((byte)1);
+                bw.Write<byte>(1);
                 bw.Write(m_SRP.Generator.ToByteArray());
-                bw.Write((byte)32);
+                bw.Write<byte>(32);
                 bw.Write(m_SRP.Modulus.ToProperByteArray().Pad(32));
                 bw.Write(m_SRP.Salt.ToProperByteArray().Pad(32));
                 bw.Write(new byte[16]);
-                bw.Write((byte)0);
+                bw.Write<byte>(0);
 
                 m_Socket.Send(ms.ToArray());
             }
@@ -144,6 +153,7 @@ namespace WoWClassicAuthServer.AuthServer
             return true;
         }
 
+        [PacketHandler(AuthCommand.AuthLogonProof)]
         public bool HandleLogonProof(BinaryReader br, int packetLength)
         {
             // Sanity check
@@ -170,11 +180,13 @@ namespace WoWClassicAuthServer.AuthServer
             return true;
         }
 
+        [PacketHandler(AuthCommand.AuthReconnectChallenge)]
         public bool HandleReconnectChallenge(BinaryReader br, int packetLength)
         {
             return false;
         }
 
+        [PacketHandler(AuthCommand.AuthReconnectProof)]
         public bool HandleReconnectProof(BinaryReader br, int packetLength)
         {
             return false;
@@ -183,25 +195,26 @@ namespace WoWClassicAuthServer.AuthServer
         public byte[] LoadRealmlist()
         {
             using (var rs = new MemoryStream())
-            using (var rw = new BinaryWriter(rs))
+            using (var rw = new GenericWriter(rs))
             {
-                rw.Write((uint)0);                          // Unused value
-                rw.Write((byte)m_Server.Realms.Count);      // Amount of realms
-                foreach (var realm in m_Server.Realms)
+                rw.Write<uint>(0);                          // Unused value
+                rw.Write((byte)m_Server.Service.Realms.Count);      // Amount of realms
+                foreach (var realm in m_Server.Service.Realms)
                     rw.Write(realm.ToByteArray());
-                rw.Write((ushort)0x2);                      // Unknown short at the end of the packet
+                rw.Write<ushort>(0x2);                      // Unknown short at the end of the packet
 
                 return rs.ToArray();
             }
         }
 
+        [PacketHandler(AuthCommand.RealmList)]
         public bool HandleRealmlist(BinaryReader br, int packetLength)
         {
             using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
+            using (var bw = new GenericWriter(ms))
             {
                 var realmInfo = LoadRealmlist();
-                bw.Write((byte)AuthCommand.RealmList);
+                bw.Write(AuthCommand.RealmList);
                 bw.Write((ushort)realmInfo.Length);
                 bw.Write(realmInfo);
 

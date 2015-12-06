@@ -1,4 +1,4 @@
-﻿namespace WoWClassicAuthServer.AuthServer.Constants
+﻿namespace WoWClassic.Common.Constants
 {
     public enum AuthCommand : byte
     {

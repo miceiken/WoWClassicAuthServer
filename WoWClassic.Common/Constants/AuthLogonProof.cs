@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace WoWClassicAuthServer.AuthServer.Constants
+namespace WoWClassic.Common.Constants
 {
     public struct AuthLogonProof
     {

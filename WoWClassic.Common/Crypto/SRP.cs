@@ -1,11 +1,10 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Linq;
-using System.Numerics;
 using System.Security.Cryptography;
+using System.Numerics;
 using System.Text;
 
-namespace WoWClassicAuthServer.Crypto
+namespace WoWClassic.Common.Crypto
 {
     public class SRP
     {

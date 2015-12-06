@@ -2,7 +2,7 @@
 using System.IO;
 using System.Text;
 
-namespace WoWClassicAuthServer.AuthServer
+namespace WoWClassic.Common.Constants
 {
     public struct RealmInfo
     {
@@ -14,19 +14,32 @@ namespace WoWClassicAuthServer.AuthServer
         public byte Characters;
         public RealmTimezone Timezone;
 
+        public static RealmInfo Read(BinaryReader br)
+        {
+            var r = new RealmInfo();
+            r.Type = (RealmType)br.ReadUInt32();
+            r.Flags = (RealmFlags)br.ReadByte();
+            r.Name = br.ReadCString();
+            r.Address = br.ReadCString();
+            r.Population = br.ReadSingle();
+            r.Characters = br.ReadByte();
+            r.Timezone = (RealmTimezone)br.ReadByte();
+            return r;
+        }
+
         public byte[] ToByteArray()
         {
             using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
+            using (var bw = new GenericWriter(ms))
             {
-                bw.Write((uint)Type);
-                bw.Write((byte)Flags);
+                bw.Write(Type);
+                bw.Write(Flags);
                 bw.Write(Encoding.ASCII.GetBytes(Name + '\0'));
                 bw.Write(Encoding.ASCII.GetBytes(Address + '\0'));
-                bw.Write((float)Population);
-                bw.Write((byte)Characters);
-                bw.Write((byte)Timezone);
-                bw.Write((byte)0);
+                bw.Write(Population);
+                bw.Write(Characters);
+                bw.Write(Timezone);
+                bw.Write<byte>(0);
 
                 return ms.ToArray();
             }

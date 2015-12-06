@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Net;
 
-namespace WoWClassicAuthServer
+namespace WoWClassic.WorldServer
 {
     class Program
     {
         private static IPAddress BindAddress = IPAddress.Any;
-        private static int BindPort = 3724;
+        private static int BindPort = 8085;
 
         private static void Main(string[] args)
         {

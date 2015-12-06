@@ -2,26 +2,15 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using WoWClassicAuthServer.AuthServer.Constants;
 
-namespace WoWClassicAuthServer.AuthServer
+namespace WoWClassic.WorldServer.WorldServer
 {
-    public class AuthServer
+    public class WorldServer
     {
-        public AuthServer()
+        public WorldServer()
         {
             m_Listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             Clients = new List<AuthConnection>();
-            Realms = new List<RealmInfo>() { new RealmInfo()
-            {
-                Type = RealmType.Normal,
-                Flags = RealmFlags.None,
-                Name = "Test Server",
-                Address ="127.0.0.1:8085",
-                Population = RealmPopulationPreset.Low,
-                Characters = 0,
-                Timezone = RealmTimezone.AnyLocale
-            } };
         }
 
         private readonly Socket m_Listener;
