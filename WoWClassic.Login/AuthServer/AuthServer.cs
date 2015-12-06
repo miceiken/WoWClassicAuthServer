@@ -33,11 +33,9 @@ namespace WoWClassic.Login.AuthServer
             if (!File.Exists("Login.sqlite"))
                 using (var db = new DBLogin())
                     db.CreateTable<Account>();
+
             if (!LoginService.ExistsAccount("testuser"))
                 LoginService.CreateAccount("testuser", "test@test.com", "TestPass");
-
-            if (!LoginService.ExistsAccount("miceiken"))
-                LoginService.CreateAccount("miceiken", "test@test.com", "miceiken");
         }
 
         public void Listen(IPEndPoint endpoint)

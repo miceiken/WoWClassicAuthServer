@@ -69,7 +69,7 @@ namespace WoWClassic.Cluster
             if (!string.IsNullOrEmpty(existing.Name))
                 Realms.Remove(existing);
 
-            Console.WriteLine("CLUSTER: Received realm '{0}' from Gateway", realm.Name);
+            Console.WriteLine("CLUSTER: Received realm '{0}' from gateway", realm.Name);
             Realms.Add(realm);
 
             return true;
