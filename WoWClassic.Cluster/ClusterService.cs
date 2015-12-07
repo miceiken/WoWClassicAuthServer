@@ -110,7 +110,6 @@ namespace WoWClassic.Cluster
             byte[] buffer;
             while ((buffer = m_Client.Receive(ref s_Local)) != null)
             {
-                Console.WriteLine("Receive");
                 using (var ms = new MemoryStream(buffer))
                 using (var br = new BinaryReader(ms))
                 {

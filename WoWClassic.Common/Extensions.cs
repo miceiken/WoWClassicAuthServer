@@ -41,5 +41,12 @@ namespace WoWClassic.Common
         {
             return new BigInteger(bytes.Concat(new byte[] { 0 }).ToArray());
         }
+
+        public static ushort SwitchEndian(this ushort old)
+        {
+            var tmp = BitConverter.GetBytes(old);
+            Array.Reverse(tmp);
+            return BitConverter.ToUInt16(tmp, 0);
+        }
     }
 }

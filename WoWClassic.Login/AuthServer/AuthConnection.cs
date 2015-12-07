@@ -37,22 +37,22 @@ namespace WoWClassic.Login.AuthServer
         public string Username { get { return m_ALC.I; } }
         public bool IsAuthenticated { get { return m_SRP != null && m_SRP.ClientProof == m_SRP.GenerateClientProof(); } }
 
-        private readonly Dictionary<AuthCommand, CommandHandler> m_CommandHandlers;
+        private readonly Dictionary<AuthOpcodes, CommandHandler> m_CommandHandlers;
 
         private Thread m_ThreadReceive;
         private byte[] m_RecvBuffer = new byte[1024];
 
         #region Packet Handler Reflection
 
-        private static Dictionary<AuthCommand, CommandHandler> RegisterHandlers(object instance)
+        private static Dictionary<AuthOpcodes, CommandHandler> RegisterHandlers(object instance)
         {
-            var ret = new Dictionary<AuthCommand, CommandHandler>();
+            var ret = new Dictionary<AuthOpcodes, CommandHandler>();
             var type = instance.GetType();
             foreach (var method in type.GetMethods())
             {
                 var attr = method.GetCustomAttributes(typeof(PacketHandlerAttribute), false).Cast<PacketHandlerAttribute>().FirstOrDefault();
                 if (attr == null) continue;
-                ret.Add((AuthCommand)attr.PacketId, (CommandHandler)method.CreateDelegate(typeof(CommandHandler), instance));
+                ret.Add((AuthOpcodes)attr.PacketId, (CommandHandler)method.CreateDelegate(typeof(CommandHandler), instance));
             }
             return ret;
         }
@@ -78,9 +78,9 @@ namespace WoWClassic.Login.AuthServer
                 using (var ms = new MemoryStream(buffer))
                 using (var br = new BinaryReader(ms))
                 {
-                    var command = (AuthCommand)br.ReadByte();
+                    var command = (AuthOpcodes)br.ReadByte();
 
-                    Console.WriteLine("Command({1}): {0}", Enum.GetName(typeof(AuthCommand), command), bytesRead);
+                    Console.WriteLine("Command({1}): {0}", Enum.GetName(typeof(AuthOpcodes), command), bytesRead);
                     if (m_CommandHandlers.ContainsKey(command))
                     {
                         if (!m_CommandHandlers[command](br, bytesRead - 1))
@@ -102,7 +102,7 @@ namespace WoWClassic.Login.AuthServer
                 case 6005:                                          // 1.12.2
                 case 6141:                                          // 1.12.3
 
-                    bw.Write((byte)AuthCommand.AuthLogonProof);     // cmd
+                    bw.Write((byte)AuthOpcodes.AuthLogonProof);     // cmd
                     bw.Write((byte)0);                              // error
                     bw.Write(m_SRP.ServerProof.ToByteArray(), 0, 20);       // M2
                     bw.Write((uint)0x00);                           // unk2
@@ -120,7 +120,7 @@ namespace WoWClassic.Login.AuthServer
             }
         }
 
-        [PacketHandler(AuthCommand.AuthLogonChallenge)]
+        [PacketHandler(AuthOpcodes.AuthLogonChallenge)]
         public bool HandleLogonChallenge(BinaryReader br, int packetLength)
         {
             // Sanity check
@@ -139,7 +139,7 @@ namespace WoWClassic.Login.AuthServer
             using (var ms = new MemoryStream())
             using (var bw = new GenericWriter(ms))
             {
-                bw.Write(AuthCommand.AuthLogonChallenge);
+                bw.Write(AuthOpcodes.AuthLogonChallenge);
                 bw.Write(AuthResult.Success); // TODO: Check for suspension/ipban/accountban
                 bw.Write<byte>(0);
                 bw.Write(m_SRP.ServerEphemeral.ToProperByteArray().Pad(32));
@@ -157,7 +157,7 @@ namespace WoWClassic.Login.AuthServer
             return true;
         }
 
-        [PacketHandler(AuthCommand.AuthLogonProof)]
+        [PacketHandler(AuthOpcodes.AuthLogonProof)]
         public bool HandleLogonProof(BinaryReader br, int packetLength)
         {
             // Sanity check
@@ -175,6 +175,9 @@ namespace WoWClassic.Login.AuthServer
                 if (!IsAuthenticated) // TODO: Send response
                     return false;
 
+                // Update session key after we made sure authentication was successful
+                LoginService.UpdateSessionKey(m_ALC.I, m_SRP.SessionKey.ToProperByteArray());
+
                 if (!WriteProof(bw, m_ALC.Build))
                     return false;
 
@@ -184,13 +187,13 @@ namespace WoWClassic.Login.AuthServer
             return true;
         }
 
-        [PacketHandler(AuthCommand.AuthReconnectChallenge)]
+        [PacketHandler(AuthOpcodes.AuthReconnectChallenge)]
         public bool HandleReconnectChallenge(BinaryReader br, int packetLength)
         {
             return false;
         }
 
-        [PacketHandler(AuthCommand.AuthReconnectProof)]
+        [PacketHandler(AuthOpcodes.AuthReconnectProof)]
         public bool HandleReconnectProof(BinaryReader br, int packetLength)
         {
             return false;
@@ -211,14 +214,14 @@ namespace WoWClassic.Login.AuthServer
             }
         }
 
-        [PacketHandler(AuthCommand.RealmList)]
+        [PacketHandler(AuthOpcodes.RealmList)]
         public bool HandleRealmlist(BinaryReader br, int packetLength)
         {
             using (var ms = new MemoryStream())
             using (var bw = new GenericWriter(ms))
             {
                 var realmInfo = LoadRealmlist();
-                bw.Write(AuthCommand.RealmList);
+                bw.Write(AuthOpcodes.RealmList);
                 bw.Write((ushort)realmInfo.Length);
                 bw.Write(realmInfo);
 

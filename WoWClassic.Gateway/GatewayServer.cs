@@ -38,7 +38,7 @@ namespace WoWClassic.Gateway
                 Type = RealmType.Normal,
                 Flags = RealmFlags.None,
                 Name = "Test Server",
-                Address = "127.0.0.1:8086", // 8085
+                Address = "127.0.0.1:8085", // 8085
                 Population = RealmPopulationPreset.Low,
                 Characters = 0,
                 Timezone = RealmTimezone.AnyLocale

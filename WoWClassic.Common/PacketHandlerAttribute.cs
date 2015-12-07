@@ -21,8 +21,12 @@ namespace WoWClassic.Common
             PacketType = pType;
         }
 
-        public PacketHandlerAttribute(AuthCommand packetId)
-            : this(Convert.ToInt32(packetId), typeof(AuthCommand))
+        public PacketHandlerAttribute(AuthOpcodes packetId)
+            : this(Convert.ToInt32(packetId), typeof(AuthOpcodes))
+        { }
+
+        public PacketHandlerAttribute(WorldOpcodes packetId)
+            : this(Convert.ToInt32(packetId), typeof(WorldOpcodes))
         { }
 
         #region Cluster Protocol
