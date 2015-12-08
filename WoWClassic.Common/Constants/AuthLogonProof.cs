@@ -4,7 +4,8 @@ using System.Runtime.InteropServices;
 
 namespace WoWClassic.Common.Constants
 {
-    public struct AuthLogonProof
+    [StructLayout(LayoutKind.Sequential)]
+    public class AuthLogonProof
     {
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
         public byte[] A;

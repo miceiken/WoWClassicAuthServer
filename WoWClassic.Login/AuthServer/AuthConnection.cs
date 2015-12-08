@@ -12,6 +12,8 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using WoWClassic.Common;
 using WoWClassic.Cluster;
+using WoWClassic.Common.Protocol;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.Login.AuthServer
 {
@@ -30,11 +32,11 @@ namespace WoWClassic.Login.AuthServer
         private readonly Socket m_Socket;
         private readonly AuthServer m_Server;
 
-        private AuthLogonChallenge m_ALC;
-        private AuthLogonProof m_ALP;
+        private C_AuthLogonChallenge m_ALC;
+        private C_AuthLogonProof m_ALP;
         private SRP m_SRP;
 
-        public string Username { get { return m_ALC.I; } }
+        public string Username { get { return m_ALC.Identifier; } }
         public bool IsAuthenticated { get { return m_SRP != null && m_SRP.ClientProof == m_SRP.GenerateClientProof(); } }
 
         private readonly Dictionary<AuthOpcodes, CommandHandler> m_CommandHandlers;
@@ -94,96 +96,155 @@ namespace WoWClassic.Login.AuthServer
             Console.WriteLine("Dropped connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
         }
 
-        public bool WriteProof(BinaryWriter bw, ushort build)
+        private void SendPacket(AuthOpcodes opcode, byte[] data)
         {
-            switch (build)
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
             {
-                case 5875:                                          // 1.12.1
-                case 6005:                                          // 1.12.2
-                case 6141:                                          // 1.12.3
+                bw.Write((byte)opcode);
+                bw.Write(data);
 
-                    bw.Write((byte)AuthOpcodes.AuthLogonProof);     // cmd
-                    bw.Write((byte)0);                              // error
-                    bw.Write(m_SRP.ServerProof.ToByteArray(), 0, 20);       // M2
-                    bw.Write((uint)0x00);                           // unk2
-
-                    return true;
-                case 8606:                                          // 2.4.3
-                case 10505:                                         // 3.2.2a
-                case 11159:                                         // 3.3.0a
-                case 11403:                                         // 3.3.2
-                case 11723:                                         // 3.3.3a
-                case 12340:                                         // 3.3.5a
-                default:
-                    Console.WriteLine("Client has unsupported build ({0})", build);
-                    return false;
+                var packet = ms.ToArray();
+                Console.WriteLine($"-> {opcode}({packet.Length})");
+                m_Socket.Send(packet);
             }
         }
 
-        [PacketHandler(AuthOpcodes.AuthLogonChallenge)]
-        public bool HandleLogonChallenge(BinaryReader br, int packetLength)
-        {
-            // Sanity check
-            if (AuthLogonChallenge.SizeConst > packetLength)
-                return false;
+        #region AuthLogonChallenge
 
-            m_ALC = AuthLogonChallenge.Read(br);
-            Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.I, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
+        [StructLayout(LayoutKind.Sequential)]
+        private class C_AuthLogonChallenge
+        {
+            public byte Error;
+            [BigEndian]
+            public ushort Size;
+            [ArrayLength(4), ReverseArray]
+            public byte[] GameName;
+            public byte Version1;
+            public byte Version2;
+            public byte Version3;
+            [BigEndian]
+            public ushort Build;
+            [ArrayLength(4), ReverseArray]
+            public byte[] Platform;
+            [ArrayLength(4), ReverseArray]
+            public byte[] OS;
+            [ArrayLength(4), ReverseArray]
+            public byte[] Country;
+            [BigEndian]
+            public uint TimezoneBias;
+            [BigEndian]
+            public uint IP;
+            [StringParse(StringTypes.PrefixedLength)]
+            public string Identifier;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class S_AuthLogonChallenge
+        {
+            public byte Error;
+            public byte unk1;
+            public byte[] ServerEphemeral;
+            public byte GeneratorLength;
+            public byte[] Generator;
+            public byte ModulusLength;
+            public byte[] Modulus;
+            public byte[] Salt;
+            public byte[] unk2;
+        }
+
+        [PacketHandler(AuthOpcodes.AuthLogonChallenge)]
+        public bool HandleAuthLogonChallenge(BinaryReader br, int packetLength)
+        {
+            m_ALC = PacketHelper.Parse<C_AuthLogonChallenge>(br);
+
+            Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.Identifier, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
+
+            // Check ban
+            // SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.Banned }));
+
+            // Check suspend
+            // SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.Suspended }));
 
             // Account doesn't exist!
-            if (!LoginService.ExistsAccount(m_ALC.I))
-                return false;
-
-            m_SRP = LoginService.GetAccountSecurity(m_ALC.I);
-
-            using (var ms = new MemoryStream())
-            using (var bw = new GenericWriter(ms))
+            if (!LoginService.ExistsAccount(m_ALC.Identifier))
             {
-                bw.Write(AuthOpcodes.AuthLogonChallenge);
-                bw.Write(AuthResult.Success); // TODO: Check for suspension/ipban/accountban
-                bw.Write<byte>(0);
-                bw.Write(m_SRP.ServerEphemeral.ToProperByteArray().Pad(32));
-                bw.Write<byte>(1);
-                bw.Write(m_SRP.Generator.ToByteArray());
-                bw.Write<byte>(32);
-                bw.Write(m_SRP.Modulus.ToProperByteArray().Pad(32));
-                bw.Write(m_SRP.Salt.ToProperByteArray().Pad(32));
-                bw.Write(new byte[16]);
-                bw.Write<byte>(0);
-
-                m_Socket.Send(ms.ToArray());
+                SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.UnknownAccount }));
+                return true;
             }
 
+            m_SRP = LoginService.GetAccountSecurity(m_ALC.Identifier);
+
+            SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge
+            {                
+                Error = (byte)AuthResult.Success,
+                unk1 = 0,
+                ServerEphemeral = m_SRP.ServerEphemeral.ToProperByteArray().Pad(32),
+                GeneratorLength = 1,
+                Generator = m_SRP.Generator.ToByteArray(),
+                ModulusLength = 32,
+                Modulus = m_SRP.Modulus.ToProperByteArray().Pad(32),
+                Salt = m_SRP.Salt.ToProperByteArray().Pad(32),
+                unk2 = new byte[17]
+            }));
+
             return true;
+        }
+
+        #endregion
+
+        [StructLayout(LayoutKind.Sequential)]
+        public class C_AuthLogonProof
+        {
+            [ArrayLength(32)]
+            public byte[] A;
+            [ArrayLength(20)]
+            public byte[] M1;
+            [ArrayLength(20)]
+            public byte[] CRC;
+            public byte nKeys;
+            public byte SecurityFlags;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public class S_AuthLogonProof
+        {
+            private byte unk0 = 0;
+            public byte Error;
+            public byte[] M2;
+            public uint unk2;
         }
 
         [PacketHandler(AuthOpcodes.AuthLogonProof)]
         public bool HandleLogonProof(BinaryReader br, int packetLength)
         {
-            // Sanity check
-            if (AuthLogonProof.SizeConst > packetLength)
-                return false;
-
-            m_ALP = AuthLogonProof.Read(br);
+            m_ALP = PacketHelper.Parse<C_AuthLogonProof>(br);
 
             m_SRP.ClientEphemeral = m_ALP.A.ToPositiveBigInteger();
             m_SRP.ClientProof = m_ALP.M1.ToPositiveBigInteger();
 
-            using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
+            // Check versions
+            if (m_ALC.Build != 5875)
             {
-                if (!IsAuthenticated) // TODO: Send response
-                    return false;
-
-                // Update session key after we made sure authentication was successful
-                LoginService.UpdateSessionKey(m_ALC.I, m_SRP.SessionKey.ToProperByteArray());
-
-                if (!WriteProof(bw, m_ALC.Build))
-                    return false;
-
-                m_Socket.Send(ms.ToArray());
+                SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = (byte)AuthResult.InvalidVersion }));
+                return true;
             }
 
+            // Check password
+            if (!IsAuthenticated) // TODO: Send response
+            {
+                // Increment password fail counter?
+                SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = (byte)AuthResult.IncorrectPassword }));
+                return true;
+            }
+
+            LoginService.UpdateSessionKey(m_ALC.Identifier, m_SRP.SessionKey.ToProperByteArray());
+            SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof
+            {
+                Error = (byte)AuthResult.Success,
+                M2 = m_SRP.ServerProof.ToByteArray(),
+                unk2 = 0
+            }));
             return true;
         }
 

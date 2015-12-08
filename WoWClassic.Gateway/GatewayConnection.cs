@@ -14,6 +14,7 @@ using WoWClassic.Common.Protocol;
 using WoWClassic.Common.Packets;
 using System.Security.Cryptography;
 using WoWClassic.Cluster;
+using System.Runtime.InteropServices;
 
 namespace WoWClassic.Gateway
 {
@@ -59,6 +60,8 @@ namespace WoWClassic.Gateway
 
         #endregion
 
+        #region Socket
+
         public void OnAccept()
         {
             Console.WriteLine("Accepting connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
@@ -93,16 +96,6 @@ namespace WoWClassic.Gateway
             Console.WriteLine("Dropped connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
         }
 
-        public void HandleAcceptedConnection()
-        {
-            using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
-            {
-                bw.Write(m_Seed);
-                SendPacket(WorldOpcodes.SMSG_AUTH_CHALLENGE, ms.ToArray());
-            }
-        }
-
         private void SendPacket(WorldOpcodes opcode, byte[] data)
         {
             using (var ms = new MemoryStream())
@@ -119,38 +112,136 @@ namespace WoWClassic.Gateway
             }
         }
 
+        #endregion
+
+        #region Packets
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class SMSG_AUTH_CHALLENGE
+        {
+            public int Seed;
+        }
+
+        private void HandleAcceptedConnection()
+        {
+            SendPacket(WorldOpcodes.SMSG_AUTH_CHALLENGE, PacketHelper.Build(new SMSG_AUTH_CHALLENGE
+            {
+                Seed = m_Seed
+            }));
+        }
+
+        #region CMSG_AUTH_SESSION
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class CMSG_AUTH_SESSION
+        {
+            public uint Build;
+            private uint Unknown;
+            [StringParse(StringTypes.CString)]
+            public string Account;
+            public uint ClientSeed;
+            [ArrayLength(20)]
+            public byte[] ClientDigest;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class SMSG_AUTH_RESPONSE
+        {
+            public byte Response;
+            public uint BillingTimeRemaining;
+            public byte BillingPlanFlags;
+            public uint BillingTimeRested;
+        }
+
         [PacketHandler(WorldOpcodes.CMSG_AUTH_SESSION)]
         public bool HandleAuthSession(BinaryReader br, int bytesRead)
         {
-            var build = br.ReadUInt32();
-            br.ReadUInt32();
-            var account = br.ReadCString();
-            var clientSeed = br.ReadUInt32();
-            var clientDigest = br.ReadBytes(20);
+            var pkt = PacketHelper.Parse<CMSG_AUTH_SESSION>(br);
 
-            m_Crypt = new AuthCrypt(LoginService.GetSessionKey(account));
+            // TODO: verify build
 
-            var serverDigest = ComputeHash(Encoding.ASCII.GetBytes(account),
+            m_Crypt = new AuthCrypt(LoginService.GetSessionKey(pkt.Account));
+
+            var serverDigest = ComputeHash(Encoding.ASCII.GetBytes(pkt.Account),
                 new byte[] { 0, 0, 0, 0 },
-                BitConverter.GetBytes(clientSeed),
+                BitConverter.GetBytes(pkt.ClientSeed),
                 BitConverter.GetBytes(m_Seed),
                 m_Crypt.SessionKey);
-            if (!serverDigest.SequenceEqual(clientDigest))
+            if (!serverDigest.SequenceEqual(pkt.ClientDigest))
                 return false;
 
-            using (var ms = new MemoryStream())
-            using (var bw = new BinaryWriter(ms))
+            SendPacket(WorldOpcodes.SMSG_AUTH_RESPONSE, PacketHelper.Build(new SMSG_AUTH_RESPONSE
             {
-                bw.Write((byte)ResponseCodes.AUTH_OK);
-                bw.Write((uint)0); // BillingTimeRemaining
-                bw.Write((byte)0); // BillingPlanFlags
-                bw.Write((uint)0); // BillingTimeRested
-
-                SendPacket(WorldOpcodes.SMSG_AUTH_RESPONSE, ms.ToArray());
-            }
+                Response = (byte)ResponseCodes.AUTH_OK,
+                BillingTimeRemaining = 0,
+                BillingPlanFlags = 0,
+                BillingTimeRested = 0
+            }));
 
             return true;
         }
+
+        #endregion
+
+        #region CMSG_CHAR_ENUM
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class CMSG_CHAR_ENUM
+        {
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class SMSG_CHAR_ENUM
+        {
+            public byte Length;
+            public CharEnumEntry[] Characters;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private class CharEnumEntry
+        {
+            public uint GUID;
+            [StringParse(StringTypes.CString)]
+            public string Name;
+            public byte Race;
+            public byte Class;
+            public byte Gender;
+            public uint PlayerBytes1;
+            public uint PlayerBytes2;
+            public float X, Y, Z;
+            public uint CharacterFlags;
+            public byte FirstLogin;
+
+            public uint PetDisplayId;
+            public uint PetLevel;
+            public uint PetFamily;
+
+            // Equipment stuff
+            //public uint[] DisplayInfoId;
+            //public byte[] InventoryType;
+
+            public uint FirstBagDisplayId;
+            public byte FirstBagInventoryType;
+        }
+
+
+
+        [PacketHandler(WorldOpcodes.CMSG_CHAR_ENUM)]
+        public bool HandleCharEnum(BinaryReader br, int bytesRead)
+        {
+            var pkt = PacketHelper.Parse<CMSG_CHAR_ENUM>(br);
+
+
+            SendPacket(WorldOpcodes.SMSG_CHAR_ENUM, PacketHelper.Build(new SMSG_CHAR_ENUM
+            {
+            }));
+
+            return true;
+        }
+
+        #endregion
+
+        #endregion
 
         private static byte[] ComputeHash(params byte[][] args)
         {

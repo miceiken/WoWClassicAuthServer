@@ -6,7 +6,8 @@ using System.Text;
 
 namespace WoWClassic.Common.Constants
 {
-    public unsafe struct AuthLogonChallenge
+    [StructLayout(LayoutKind.Sequential)]
+    public class AuthLogonChallenge
     {
         public byte Error;                      // 0x0
         public ushort Size;                     // 0x1

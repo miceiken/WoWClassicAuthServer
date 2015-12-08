@@ -79,9 +79,8 @@ namespace WoWClassic.Cluster
         {
             var realm = RealmInfo.Read(br);
 
-            var existing = Realms.FirstOrDefault(r => r.Name == realm.Name);
-            if (!string.IsNullOrEmpty(existing.Name))
-                Realms.Remove(existing);
+            if (Realms.Contains(realm))
+                Realms.Remove(realm);
 
             Console.WriteLine("CLUSTER: Received realm '{0}' from gateway", realm.Name);
             Realms.Add(realm);

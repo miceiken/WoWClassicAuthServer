@@ -82,6 +82,7 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="PacketHandlerAttribute.cs" />
     <Compile Include="GenericWriter.cs" />
+    <Compile Include="Packets\PacketHelper.cs" />
     <Compile Include="Packets\WorldPacketHeader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Constants\RealmInfo.cs" />

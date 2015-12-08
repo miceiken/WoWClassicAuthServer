@@ -1,10 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace WoWClassic.Common.Constants
 {
-    public struct RealmInfo
+    [StructLayout(LayoutKind.Sequential)]
+    public class RealmInfo
     {
         public RealmType Type;
         public RealmFlags Flags;
