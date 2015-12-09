@@ -105,7 +105,7 @@ namespace WoWClassic.Login.AuthServer
                 bw.Write(data);
 
                 var packet = ms.ToArray();
-                Console.WriteLine($"-> {opcode}({packet.Length})");
+                Console.WriteLine($"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
                 m_Socket.Send(packet);
             }
         }
@@ -158,7 +158,7 @@ namespace WoWClassic.Login.AuthServer
         {
             m_ALC = PacketHelper.Parse<C_AuthLogonChallenge>(br);
 
-            Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.Identifier, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
+            //Console.WriteLine("<- {0} connecting ({1}.{2}.{3}.{4})", m_ALC.Identifier, m_ALC.Version1, m_ALC.Version2, m_ALC.Version3, m_ALC.Build);
 
             // Check ban
             // SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.Banned }));
@@ -172,11 +172,10 @@ namespace WoWClassic.Login.AuthServer
                 SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.UnknownAccount }));
                 return true;
             }
-
             m_SRP = LoginService.GetAccountSecurity(m_ALC.Identifier);
 
             SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge
-            {                
+            {
                 Error = (byte)AuthResult.Success,
                 unk1 = 0,
                 ServerEphemeral = m_SRP.ServerEphemeral.ToProperByteArray().Pad(32),
@@ -209,7 +208,6 @@ namespace WoWClassic.Login.AuthServer
         [StructLayout(LayoutKind.Sequential)]
         public class S_AuthLogonProof
         {
-            private byte unk0 = 0;
             public byte Error;
             public byte[] M2;
             public uint unk2;
@@ -219,6 +217,9 @@ namespace WoWClassic.Login.AuthServer
         public bool HandleLogonProof(BinaryReader br, int packetLength)
         {
             m_ALP = PacketHelper.Parse<C_AuthLogonProof>(br);
+            br.BaseStream.Position = 1;
+            var test = AuthLogonProof.Read(br);
+
 
             m_SRP.ClientEphemeral = m_ALP.A.ToPositiveBigInteger();
             m_SRP.ClientProof = m_ALP.M1.ToPositiveBigInteger();
@@ -242,7 +243,7 @@ namespace WoWClassic.Login.AuthServer
             SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof
             {
                 Error = (byte)AuthResult.Success,
-                M2 = m_SRP.ServerProof.ToByteArray(),
+                M2 = m_SRP.ServerProof.ToByteArray().Pad(20),
                 unk2 = 0
             }));
             return true;

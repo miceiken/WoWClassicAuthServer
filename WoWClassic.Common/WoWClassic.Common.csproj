@@ -80,6 +80,7 @@
     <Compile Include="Crypto\AuthCrypt.cs" />
     <Compile Include="Crypto\SRP.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="Log\Log.cs" />
     <Compile Include="PacketHandlerAttribute.cs" />
     <Compile Include="GenericWriter.cs" />
     <Compile Include="Packets\PacketHelper.cs" />

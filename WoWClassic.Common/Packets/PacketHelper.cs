@@ -114,6 +114,10 @@ namespace WoWClassic.Common.Packets
             {
                 foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).OrderBy(f => Marshal.OffsetOf(type, f.Name).ToInt32()))
                 {
+                    // TODO: Will this be right?
+                    if (field.GetValue(instance) == null) break;
+                    Console.WriteLine($"\t{field.Name}:{field.FieldType}");
+
                     if (field.FieldType == typeof(byte[]))
                     {
                         bw.Write((byte[])field.GetValue(instance));

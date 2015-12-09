@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using WoWClassic.Common.Log;
 
 namespace WoWClassic.Login
 {
@@ -40,9 +41,13 @@ namespace WoWClassic.Login
                 }
             }
 
+            Log.CreateLogger<AuthLogTypes>();
+            Log.AddSubscriber(AuthLogTypes.General, new FileLogSubscriber("Logs/LoginServer.txt", "GENERAL"));
+
             var srv = new AuthServer.AuthServer();
             var ep = new IPEndPoint(BindAddress, BindPort);
             srv.Listen(ep);
+            Log.WriteLine(AuthLogTypes.General, "Server is now listening at {0}:{1}", ep.Address, ep.Port);
             Console.WriteLine("Server is now listening at {0}:{1}", ep.Address, ep.Port);
 
             Console.ReadKey();
@@ -56,5 +61,13 @@ namespace WoWClassic.Login
             arg = args[++i];
             return true;
         }
+    }
+
+    public enum AuthLogTypes
+    {
+        General,
+        Succeeded,
+        Failed,
+        Debug
     }
 }
