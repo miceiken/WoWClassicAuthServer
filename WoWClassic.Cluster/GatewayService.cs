@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using WoWClassic.Common.Constants;
+using WoWClassic.Common.Packets;
 using WoWClassic.Common.Protocol;
-using WoWClassic.Common;
-using WoWClassic.Common.Constants;
+using WoWClassic.Common.DataStructure;
 
 namespace WoWClassic.Cluster
 {
@@ -15,14 +11,14 @@ namespace WoWClassic.Cluster
             : base(ServiceIds.Gateway)
         { }
 
-        private RealmInfo m_Realm;
-        public RealmInfo Realm
+        private Realm m_Realm;
+        public Realm Realm
         {
             get { return m_Realm; }
             set
             {
                 m_Realm = value;
-                Announce(GatewayServicePacketIds.UpdateRealm, m_Realm.ToByteArray());
+                Announce(GatewayServicePacketIds.UpdateRealm, PacketHelper.Build(m_Realm));
             }
         }
 

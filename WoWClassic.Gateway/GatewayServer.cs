@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using WoWClassic.Cluster;
-using WoWClassic.Common;
-using WoWClassic.Common.Constants;
+using WoWClassic.Common.DataStructure;
 
 namespace WoWClassic.Gateway
 {
@@ -33,7 +28,7 @@ namespace WoWClassic.Gateway
             m_Listener.Listen(6600);
 
             Service.Participate();
-            Service.Realm = new RealmInfo()
+            Service.Realm = new Realm()
             {
                 Type = RealmType.Normal,
                 Flags = RealmFlags.None,

@@ -46,10 +46,25 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WorldServer\WorldConnection.cs" />
     <Compile Include="WorldServer\WorldServer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WoWClassic.Cluster\WoWClassic.Cluster.csproj">
+      <Project>{994872ee-8599-4e53-a3e8-8978f3a68ce1}</Project>
+      <Name>WoWClassic.Cluster</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WoWClassic.Common\WoWClassic.Common.csproj">
+      <Project>{d2e51e74-fa8d-4c0e-a8d3-fdbffcdef06e}</Project>
+      <Name>WoWClassic.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\WoWClassic.Datastore\WoWClassic.Datastore.csproj">
+      <Project>{1f2c7e48-d78c-442f-85bb-0db46f82500a}</Project>
+      <Name>WoWClassic.Datastore</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

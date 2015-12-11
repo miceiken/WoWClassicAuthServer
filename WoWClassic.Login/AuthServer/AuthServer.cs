@@ -1,14 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using LinqToDB;
+using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using WoWClassic.Common.Constants;
 using WoWClassic.Cluster;
-using WoWClassic.Datastore;
 using WoWClassic.Datastore.Login;
-using LinqToDB;
-using LinqToDB.Mapping;
-using System.IO;
 
 namespace WoWClassic.Login.AuthServer
 {

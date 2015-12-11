@@ -1,20 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Linq;
+using WoWClassic.Cluster;
+using WoWClassic.Common;
 using WoWClassic.Common.Constants;
 using WoWClassic.Common.Crypto;
-using System.Text;
-using System.Numerics;
-using System.Runtime.InteropServices;
-using WoWClassic.Common;
-using WoWClassic.Cluster;
-using WoWClassic.Common.Protocol;
-using WoWClassic.Common.Packets;
+using WoWClassic.Common.DataStructure;
 using WoWClassic.Common.Log;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.Login.AuthServer
 {
@@ -209,8 +206,6 @@ namespace WoWClassic.Login.AuthServer
         public bool HandleLogonProof(BinaryReader br, int packetLength)
         {
             m_ALP = PacketHelper.Parse<C_AuthLogonProof>(br);
-            br.BaseStream.Position = 1;
-            var test = AuthLogonProof.Read(br);
 
 
             m_SRP.ClientEphemeral = m_ALP.A.ToPositiveBigInteger();
@@ -253,34 +248,22 @@ namespace WoWClassic.Login.AuthServer
             return false;
         }
 
-        public byte[] LoadRealmlist()
+        public class S_RealmList
         {
-            using (var rs = new MemoryStream())
-            using (var rw = new GenericWriter(rs))
-            {
-                rw.Write<uint>(0);                          // Unused value
-                rw.Write((byte)m_Server.Service.Realms.Count);      // Amount of realms
-                foreach (var realm in m_Server.Service.Realms)
-                    rw.Write(realm.ToByteArray());
-                rw.Write<ushort>(0x2);                      // Unknown short at the end of the packet
-
-                return rs.ToArray();
-            }
+            private uint unk0 = 0;
+            public uint Length;
+            public Realm[] Realms;
+            private ushort unk1 = 2;
         }
 
         [PacketHandler(AuthOpcodes.RealmList)]
         public bool HandleRealmlist(BinaryReader br, int packetLength)
         {
-            using (var ms = new MemoryStream())
-            using (var bw = new GenericWriter(ms))
+            SendPacket(AuthOpcodes.RealmList, PacketHelper.Build(new S_RealmList
             {
-                var realmInfo = LoadRealmlist();
-                bw.Write(AuthOpcodes.RealmList);
-                bw.Write((ushort)realmInfo.Length);
-                bw.Write(realmInfo);
-
-                m_Socket.Send(ms.ToArray());
-            }
+                Length = (uint)m_Server.Service.Realms.Count,
+                Realms = m_Server.Service.Realms.ToArray()
+            }));
 
             return true;
         }

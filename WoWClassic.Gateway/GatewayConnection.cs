@@ -1,22 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
-using System.IO;
+using WoWClassic.Cluster;
 using WoWClassic.Common;
 using WoWClassic.Common.Constants;
-using WoWClassic.Common.Crypto;
-using WoWClassic.Common.Protocol;
-using WoWClassic.Common.Packets;
-using System.Security.Cryptography;
-using WoWClassic.Cluster;
-using System.Runtime.InteropServices;
-using WoWClassic.Common.Log;
 using WoWClassic.Common.Constants.Game;
+using WoWClassic.Common.Crypto;
+using WoWClassic.Common.Log;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.Gateway
 {

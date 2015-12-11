@@ -1,19 +1,16 @@
-﻿using System;
+﻿using LinqToDB;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WoWClassic.Common.Protocol;
-using WoWClassic.Common;
-using WoWClassic.Common.Constants;
 using System.IO;
-using LinqToDB;
-using LinqToDB.Mapping;
-using WoWClassic.Datastore;
-using WoWClassic.Datastore.Login;
+using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
+using WoWClassic.Common;
 using WoWClassic.Common.Crypto;
-using System.Numerics;
+using WoWClassic.Common.Packets;
+using WoWClassic.Common.Protocol;
+using WoWClassic.Datastore.Login;
+using WoWClassic.Common.DataStructure;
 
 namespace WoWClassic.Cluster
 {
@@ -23,7 +20,7 @@ namespace WoWClassic.Cluster
             : base(ServiceIds.Login)
         { }
 
-        public List<RealmInfo> Realms { get; private set; } = new List<RealmInfo>();
+        public List<Common.DataStructure.Realm> Realms { get; private set; } = new List<Common.DataStructure.Realm>();
 
         public static void CreateAccount(string username, string email, string password)
         {
@@ -77,7 +74,7 @@ namespace WoWClassic.Cluster
         [PacketHandler(GatewayServicePacketIds.UpdateRealm)]
         public bool HandleRealmUpdate(BinaryReader br, int bytesRead)
         {
-            var realm = RealmInfo.Read(br);
+            var realm = PacketHelper.Parse<Common.DataStructure.Realm>(br);
 
             if (Realms.Contains(realm))
                 Realms.Remove(realm);

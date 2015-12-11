@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Net;
+using WoWClassic.World.WorldServer;
 
-namespace WoWClassic.WorldServer
+namespace WoWClassic.World
 {
     class Program
     {
@@ -40,14 +41,14 @@ namespace WoWClassic.WorldServer
                 }
             }
 
-            var srv = new AuthServer.AuthServer();
+            var srv = new WorldServer.WorldServer();
             var ep = new IPEndPoint(BindAddress, BindPort);
             srv.Listen(ep);
             Console.WriteLine("Server is now listening at {0}:{1}", ep.Address, ep.Port);
 
             Console.ReadKey();
         }
-
+        // https://github.com/RomanRom2/WoWCore/blob/03eb99d0a84606de44413b4fae123f1b89b5dac6/05875_1.12.1/pas/sandbox/ClassConnection.pas#L560-L730
         private static bool TryReadArg(string[] args, ref int i, out string arg)
         {
             arg = null;

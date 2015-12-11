@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using WoWClassic.Common.Crypto;
 using WoWClassic.Common.Constants;
+using WoWClassic.Common.Crypto;
 
 namespace WoWClassic.Common.Packets
 {

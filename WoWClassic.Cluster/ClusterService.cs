@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
-using System.IO;
 using System.Threading;
 using WoWClassic.Common;
 using WoWClassic.Common.Protocol;
