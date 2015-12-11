@@ -42,7 +42,13 @@ namespace WoWClassic.Login
             }
 
             Log.CreateLogger<AuthLogTypes>();
+
+            Log.AddSubscriber(AuthLogTypes.Packets, new FileLogSubscriber("Logs/LoginPackets.txt"));
+            Log.AddSubscriber(AuthLogTypes.Packets, new ConsoleLogSubscriber("[PACKET] "));
+
+            Log.AddSubscriber(AuthLogTypes.Debug, new FileLogSubscriber("Logs/LOGINDEBUG.txt"));
             Log.AddSubscriber(AuthLogTypes.General, new FileLogSubscriber("Logs/LoginServer.txt", "GENERAL"));
+            
 
             var srv = new AuthServer.AuthServer();
             var ep = new IPEndPoint(BindAddress, BindPort);
@@ -66,8 +72,7 @@ namespace WoWClassic.Login
     public enum AuthLogTypes
     {
         General,
-        Succeeded,
-        Failed,
+        Packets,
         Debug
     }
 }

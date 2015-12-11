@@ -63,7 +63,22 @@ namespace WoWClassic.Common.Log
         public void WriteLine(string entry)
         {
             using (var file = File.AppendText(Filename))
-                file.WriteLine(Prefix ?? string.Empty + entry);
+                file.WriteLine((Prefix ?? string.Empty) + entry);
+        }
+    }
+
+    public class ConsoleLogSubscriber : ILogSubscriber
+    {
+        public ConsoleLogSubscriber(string prefix = null)
+        {
+            Prefix = prefix;
+        }
+
+        public string Prefix { get; private set; }
+
+        public void WriteLine(string entry)
+        {
+            Console.WriteLine((Prefix ?? string.Empty) + entry);
         }
     }
 }

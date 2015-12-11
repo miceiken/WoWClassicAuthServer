@@ -15,6 +15,8 @@ using WoWClassic.Common.Packets;
 using System.Security.Cryptography;
 using WoWClassic.Cluster;
 using System.Runtime.InteropServices;
+using WoWClassic.Common.Log;
+using WoWClassic.Common.Constants.Game;
 
 namespace WoWClassic.Gateway
 {
@@ -75,7 +77,7 @@ namespace WoWClassic.Gateway
             HandleAcceptedConnection();
 
             int bytesRead;
-            while ((bytesRead = m_Socket.Receive(m_RecvBuffer, m_RecvBuffer.Length, SocketFlags.None)) > 0)
+            while ((bytesRead = m_Socket.Receive(m_RecvBuffer)) > 0)
             {
                 var buffer = new byte[bytesRead];
                 Buffer.BlockCopy(m_RecvBuffer, 0, buffer, 0, bytesRead);
@@ -84,12 +86,10 @@ namespace WoWClassic.Gateway
                 using (var br = new BinaryReader(ms))
                 {
                     var header = new WorldPacketHeader(m_Crypt, br);
-                    Console.WriteLine($"<- {header.Opcode}({header.Length}|{buffer.Length})");
-                    if (m_CommandHandlers.ContainsKey(header.Opcode))
-                    {
-                        if (!m_CommandHandlers[header.Opcode](br, header.Length - 6))
-                            Console.WriteLine($"Failed to handle command {header.Opcode}");
-                    }
+
+                    Log.WriteLine(GatewayLogTypes.Packets, $"<- {header.Opcode}({buffer.Length}):\n\t{string.Join(" ", buffer.Select(b => b.ToString("X2")))}");
+                    if (!m_CommandHandlers.ContainsKey(header.Opcode) || !m_CommandHandlers[header.Opcode](br, header.Length - 6))
+                        Log.WriteLine(GatewayLogTypes.Packets, $"Failed to handle command {header.Opcode}");
                 }
             }
             m_Server.Clients.Remove(this);
@@ -107,7 +107,7 @@ namespace WoWClassic.Gateway
 
                 var packet = ms.ToArray();
                 m_Crypt?.Encrypt(packet);
-                Console.WriteLine($"-> {opcode}({data.Length}|{packet.Length})");
+                Log.WriteLine(GatewayLogTypes.Packets, $"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
                 m_Socket.Send(packet);
             }
         }
@@ -116,7 +116,8 @@ namespace WoWClassic.Gateway
 
         #region Packets
 
-        [StructLayout(LayoutKind.Sequential)]
+        #region SMSG_AUTH_CHALLENGE
+
         private class SMSG_AUTH_CHALLENGE
         {
             public int Seed;
@@ -130,21 +131,46 @@ namespace WoWClassic.Gateway
             }));
         }
 
+        #endregion
+
+        #region CMSG_PING
+
+        public class CMSG_PING
+        {
+            public uint Ping;
+            public uint Latency;
+        }
+
+        public class SMSG_PONG
+        {
+            public uint Ping;
+        }
+
+        [PacketHandler(WorldOpcodes.CMSG_PING)]
+        public bool HandlePing(BinaryReader br, int bytesRead)
+        {
+            var pkt = PacketHelper.Parse<CMSG_PING>(br);
+            // TODO: implement ping checks
+
+            SendPacket(WorldOpcodes.SMSG_PONG, PacketHelper.Build(new SMSG_PONG { Ping = pkt.Ping }));
+            return true;
+        }
+
+        #endregion
+
         #region CMSG_AUTH_SESSION
 
-        [StructLayout(LayoutKind.Sequential)]
         private class CMSG_AUTH_SESSION
         {
             public uint Build;
             private uint Unknown;
-            [StringParse(StringTypes.CString)]
+            [PacketString(StringTypes.CString)]
             public string Account;
             public uint ClientSeed;
-            [ArrayLength(20)]
+            [PacketArrayLength(20)]
             public byte[] ClientDigest;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         private class SMSG_AUTH_RESPONSE
         {
             public byte Response;
@@ -183,32 +209,75 @@ namespace WoWClassic.Gateway
 
         #endregion
 
+        #region CMSG_CHAR_CREATE
+
+        public class CMSG_CHAR_CREATE
+        {
+            [PacketString(StringTypes.CString)]
+            public string Name;
+            public WoWRace Race;
+            public WoWClass Class;
+            public WoWGender Gender;
+            public byte Skin;
+            public byte Face;
+            public byte HairStyle;
+            public byte HairColor;
+            public byte FacialHair;
+            public byte OutfitId;
+        }
+
+        public class SMSG_CHAR_CREATE
+        {
+            public CharacterCreationCode Code;
+        }
+
+        [PacketHandler(WorldOpcodes.CMSG_CHAR_CREATE)]
+        public bool HandleCharCreate(BinaryReader br, int bytesRead)
+        {
+            var pkt = PacketHelper.Parse<CMSG_CHAR_CREATE>(br);
+
+            // TODO: character creation
+            // for now, fake success!
+
+            SendPacket(WorldOpcodes.SMSG_CHAR_CREATE, PacketHelper.Build(new SMSG_CHAR_CREATE { Code = CharacterCreationCode.Success }));
+            return true;
+        }
+
+        #endregion
+
         #region CMSG_CHAR_ENUM
 
-        [StructLayout(LayoutKind.Sequential)]
         private class CMSG_CHAR_ENUM
         {
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         private class SMSG_CHAR_ENUM
         {
             public byte Length;
             public CharEnumEntry[] Characters;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         private class CharEnumEntry
         {
-            public uint GUID;
-            [StringParse(StringTypes.CString)]
+            public ulong GUID;
+            [PacketString(StringTypes.CString)]
             public string Name;
-            public byte Race;
-            public byte Class;
-            public byte Gender;
-            public uint PlayerBytes1;
-            public uint PlayerBytes2;
+
+            public WoWRace Race;
+            public WoWClass Class;
+            public WoWGender Gender;
+            public byte Skin;
+            public byte Face;
+            public byte HairStyle;
+            public byte HairColor;
+            public byte FacialHair;
+
+            public byte Level;
+            public uint Zone;
+            public uint Map;
             public float X, Y, Z;
+
+            public uint GuildId;
             public uint CharacterFlags;
             public byte FirstLogin;
 
@@ -216,26 +285,109 @@ namespace WoWClassic.Gateway
             public uint PetLevel;
             public uint PetFamily;
 
-            // Equipment stuff
-            //public uint[] DisplayInfoId;
-            //public byte[] InventoryType;
-
+            public CharEnumEquipmentEntry[] Equipment;
             public uint FirstBagDisplayId;
             public byte FirstBagInventoryType;
         }
 
-
+        private class CharEnumEquipmentEntry
+        {
+            public uint DisplayInfoId;
+            public byte InventoryType;
+        }
 
         [PacketHandler(WorldOpcodes.CMSG_CHAR_ENUM)]
         public bool HandleCharEnum(BinaryReader br, int bytesRead)
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_ENUM>(br);
 
+            var character = new CharEnumEntry
+            {
+                GUID = 1,
+                Name = "ChaosvexIRL",
+                Race = WoWRace.Human,
+                Class = WoWClass.Paladin,
+                Gender = WoWGender.Female,
+                Skin = 1,
+                Face = 7,
+                HairStyle = 8,
+                HairColor = 6,
+                FacialHair = 4,
+
+                Level = 60,
+                Zone = 12,
+                Map = 0,
+                X = -8954.42f,
+                Y = -158.558f,
+                Z = 81.8225f,
+
+                GuildId = 0,
+                CharacterFlags = 0,
+                FirstLogin = 0,
+
+                PetDisplayId = 0,
+                PetLevel = 0,
+                PetFamily = 0,
+
+                Equipment = new CharEnumEquipmentEntry[(int)WoWEquipSlot.Tabard + 1],
+                FirstBagDisplayId = 0,
+                FirstBagInventoryType = 0,
+            };
+
+            for (int i = (int)WoWEquipSlot.Head; i < (int)WoWEquipSlot.Tabard + 1; i++)
+                character.Equipment[i] = new CharEnumEquipmentEntry { DisplayInfoId = 0, InventoryType = 0 };
+
 
             SendPacket(WorldOpcodes.SMSG_CHAR_ENUM, PacketHelper.Build(new SMSG_CHAR_ENUM
             {
+                Length = 1,
+                Characters = new CharEnumEntry[] { character },
             }));
 
+            return true;
+        }
+
+        #endregion
+
+        #region CMSG_PLAYER_LOGIN
+
+        // https://github.com/cmangos/mangos-classic/blob/master/src/game/CharacterHandler.cpp#L417-L669
+
+
+        public class CMSG_PLAYER_LOGIN
+        {
+            public ulong GUID;
+        }
+
+        public class SMSG_LOGIN_VERIFY_WORLD
+        {
+            public uint MapID;
+            public float X, Y, Z;
+            public float Orientation;
+        }
+
+        public class SMSG_ACCOUNT_DATA_TIMES
+        {
+            public uint[] Data;
+        }
+
+        // https://github.com/cmangos/mangos-classic/blob/master/src/game/Player.cpp#L16858-L16925
+
+        [PacketHandler(WorldOpcodes.CMSG_PLAYER_LOGIN)]
+        public bool HandlePlayerLogin(BinaryReader br, int bytesRead)
+        {
+            var pkt = PacketHelper.Parse<CMSG_PLAYER_LOGIN>(br);
+
+            SendPacket(WorldOpcodes.SMSG_LOGIN_VERIFY_WORLD, PacketHelper.Build(new SMSG_LOGIN_VERIFY_WORLD
+            {
+                MapID = 0,
+                X = -8954.42f,
+                Y = -158.558f,
+                Z = 81.8225f,
+                Orientation = 0.0f
+            }));
+
+            SendPacket(WorldOpcodes.SMSG_ACCOUNT_DATA_TIMES, PacketHelper.Build(new SMSG_ACCOUNT_DATA_TIMES { Data = new uint[32] }));
             return true;
         }
 

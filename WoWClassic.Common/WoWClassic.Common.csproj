@@ -74,8 +74,13 @@
     <Compile Include="Constants\AuthLogonChallenge.cs" />
     <Compile Include="Constants\AuthLogonProof.cs" />
     <Compile Include="Constants\AuthResult.cs" />
+    <Compile Include="Constants\CharacterCreationCode.cs" />
+    <Compile Include="Constants\Game\WoWClass.cs" />
+    <Compile Include="Constants\Game\WoWEquipSlot.cs" />
+    <Compile Include="Constants\Game\WoWGender.cs" />
     <Compile Include="Constants\ResponseCodes.cs" />
     <Compile Include="Constants\WorldOpcodes.cs" />
+    <Compile Include="Constants\Game\WoWRace.cs" />
     <Compile Include="Crypto\ARC4.cs" />
     <Compile Include="Crypto\AuthCrypt.cs" />
     <Compile Include="Crypto\SRP.cs" />

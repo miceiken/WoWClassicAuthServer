@@ -14,6 +14,7 @@ using WoWClassic.Common;
 using WoWClassic.Cluster;
 using WoWClassic.Common.Protocol;
 using WoWClassic.Common.Packets;
+using WoWClassic.Common.Log;
 
 namespace WoWClassic.Login.AuthServer
 {
@@ -72,7 +73,7 @@ namespace WoWClassic.Login.AuthServer
         public void OnReceive()
         {
             int bytesRead;
-            while ((bytesRead = m_Socket.Receive(m_RecvBuffer, m_RecvBuffer.Length, SocketFlags.None)) > 0)
+            while ((bytesRead = m_Socket.Receive(m_RecvBuffer)) > 0)
             {
                 var buffer = new byte[bytesRead];
                 Buffer.BlockCopy(m_RecvBuffer, 0, buffer, 0, bytesRead);
@@ -82,14 +83,9 @@ namespace WoWClassic.Login.AuthServer
                 {
                     var command = (AuthOpcodes)br.ReadByte();
 
-                    Console.WriteLine("Command({1}): {0}", Enum.GetName(typeof(AuthOpcodes), command), bytesRead);
-                    if (m_CommandHandlers.ContainsKey(command))
-                    {
-                        if (!m_CommandHandlers[command](br, bytesRead - 1))
-                            Console.WriteLine("Failed to handle command {0}", command);
-                    }
-                    else
-                        Console.WriteLine("Command({0}): {1} (!) No handler", bytesRead, command);
+                    Log.WriteLine(AuthLogTypes.Packets, $"<- {command}({bytesRead})\n\t{string.Join(" ", buffer.Select(b => b.ToString("X2")))}");
+                    if (!m_CommandHandlers.ContainsKey(command) || !m_CommandHandlers[command](br, bytesRead - 1))
+                        Log.WriteLine(AuthLogTypes.Packets, $"Failed to handle command {command}");
                 }
             }
             m_Server.Clients.Remove(this);
@@ -105,41 +101,39 @@ namespace WoWClassic.Login.AuthServer
                 bw.Write(data);
 
                 var packet = ms.ToArray();
-                Console.WriteLine($"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
+                Log.WriteLine(AuthLogTypes.Packets, $"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
                 m_Socket.Send(packet);
             }
         }
 
         #region AuthLogonChallenge
 
-        [StructLayout(LayoutKind.Sequential)]
         private class C_AuthLogonChallenge
         {
             public byte Error;
-            [BigEndian]
+            [PacketBigEndian]
             public ushort Size;
-            [ArrayLength(4), ReverseArray]
+            [PacketArrayLength(4), PacketArrayReverse]
             public byte[] GameName;
             public byte Version1;
             public byte Version2;
             public byte Version3;
-            [BigEndian]
+            [PacketBigEndian]
             public ushort Build;
-            [ArrayLength(4), ReverseArray]
+            [PacketArrayLength(4), PacketArrayReverse]
             public byte[] Platform;
-            [ArrayLength(4), ReverseArray]
+            [PacketArrayLength(4), PacketArrayReverse]
             public byte[] OS;
-            [ArrayLength(4), ReverseArray]
+            [PacketArrayLength(4), PacketArrayReverse]
             public byte[] Country;
-            [BigEndian]
+            [PacketBigEndian]
             public uint TimezoneBias;
-            [BigEndian]
+            [PacketBigEndian]
             public uint IP;
-            [StringParse(StringTypes.PrefixedLength)]
+            [PacketString(StringTypes.PrefixedLength)]
             public string Identifier;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         private class S_AuthLogonChallenge
         {
             public byte Error;
@@ -192,20 +186,18 @@ namespace WoWClassic.Login.AuthServer
 
         #endregion
 
-        [StructLayout(LayoutKind.Sequential)]
         public class C_AuthLogonProof
         {
-            [ArrayLength(32)]
+            [PacketArrayLength(32)]
             public byte[] A;
-            [ArrayLength(20)]
+            [PacketArrayLength(20)]
             public byte[] M1;
-            [ArrayLength(20)]
+            [PacketArrayLength(20)]
             public byte[] CRC;
             public byte nKeys;
             public byte SecurityFlags;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
         public class S_AuthLogonProof
         {
             public byte Error;

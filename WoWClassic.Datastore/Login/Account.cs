@@ -26,5 +26,8 @@ namespace WoWClassic.Datastore.Login
 
         [Column/*(Length = 32)*/, NotNull]
         public byte[] SRPSalt { get; set; }
+
+        //[Association(ThisKey = "AccountID", OtherKey = "AccountID", CanBeNull = false)]
+        //public Session Session { get; set; }
     }
 }

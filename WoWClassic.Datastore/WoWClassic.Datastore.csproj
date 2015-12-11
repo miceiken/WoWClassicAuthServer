@@ -71,6 +71,7 @@
     <Compile Include="Login\Account.cs" />
     <Compile Include="Login\DBLogin.cs" />
     <Compile Include="Login\Realm.cs" />
+    <Compile Include="Login\Session.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

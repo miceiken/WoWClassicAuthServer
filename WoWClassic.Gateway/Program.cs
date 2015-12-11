@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net;
+using WoWClassic.Common.Log;
 
 namespace WoWClassic.Gateway
 {
@@ -44,6 +45,14 @@ namespace WoWClassic.Gateway
                 }
             }
 
+            Log.CreateLogger<GatewayLogTypes>();
+
+            Log.AddSubscriber(GatewayLogTypes.Packets, new FileLogSubscriber("Logs/GatewayPackets.txt"));
+            Log.AddSubscriber(GatewayLogTypes.Packets, new ConsoleLogSubscriber("[PACKET] "));
+
+            Log.AddSubscriber(GatewayLogTypes.DataStructure, new FileLogSubscriber("Logs/DataStructure.txt"));
+            Log.AddSubscriber(GatewayLogTypes.DataStructure, new ConsoleLogSubscriber("[DATASTRUCT]"));
+
             var srv = new GatewayServer();
             var ep = new IPEndPoint(BindAddress, BindPort);
             srv.Listen(ep);
@@ -60,5 +69,14 @@ namespace WoWClassic.Gateway
             arg = args[++i];
             return true;
         }
+
+        
+    }
+    public enum GatewayLogTypes
+    {
+        General,
+        Debug,
+        Packets,
+        DataStructure,
     }
 }
