@@ -91,9 +91,9 @@ namespace WoWClassic.Gateway
                     {
                         if (CharacterGUID == 0)
                             throw new Exception("Packet unhandled by Gateway -- Character GUID = 0");
-                        Log.WriteLine(GatewayLogTypes.Packets, $"No handler for {header.Opcode} -- forwarding to world");
 
-                        SendWorldPacket(buffer);
+                        Log.WriteLine(GatewayLogTypes.Packets, $"Forwarding {header.Opcode} to world server");
+                        SendWorldPacket(header, buffer);
                     }
                 }
             }
@@ -101,17 +101,17 @@ namespace WoWClassic.Gateway
             Console.WriteLine("Dropped connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
         }
 
-        private void SendWorldPacket(byte[] data)
+        private void SendWorldPacket(WorldPacketHeader header, byte[] data)
         {
             using (var ms = new MemoryStream())
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write(CharacterGUID);
-                m_Crypt.Decrypt(data);
+                // Replace header with the decrypted one
+                Buffer.BlockCopy(header.GetDecrypted(), 0, data, 0, 6);
                 bw.Write(data);
 
-                // TODO: Make something better?
-                m_Server.WorldGatewayServer.ClientConnectionMap[this].SendPacket(ms.ToArray());
+                m_Server.SendWorldPacket(this, ms.ToArray());
             }
         }
 
@@ -325,6 +325,8 @@ namespace WoWClassic.Gateway
         public bool HandleCharEnum(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_ENUM>(br);
+
+            // TODO: Get characters from database
 
             var character = new CharEnumEntry
             {

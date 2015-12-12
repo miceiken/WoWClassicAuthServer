@@ -253,7 +253,7 @@ namespace WoWClassic.Login.AuthServer
         public class S_RealmList
         {
             private uint unk0 = 0;
-            public byte Length;
+            public byte RealmCount;
             public Realm[] Realms;
             private ushort unk1 = 2;
         }
@@ -262,16 +262,16 @@ namespace WoWClassic.Login.AuthServer
         [PacketHandler(AuthOpcodes.RealmList)]
         public bool HandleRealmlist(BinaryReader br)
         {
-            var pkt = new S_RealmList
+            var realms = m_Server.Service.RealmStates.Select(r => r.Realm);
+
+            var data = PacketHelper.Build(new S_RealmList
             {
-                Length = (byte)m_Server.Service.RealmStates.Count,
-                Realms = m_Server.Service.RealmStates.Select(r => r.Realm).ToArray()
-            };
-
-            var data = PacketHelper.Build(pkt);
+                RealmCount = (byte)realms.Count(),
+                Realms = realms.ToArray()
+            });
 
 
-            SendPacket(AuthOpcodes.RealmList, data);
+            SendPacket(AuthOpcodes.RealmList, BitConverter.GetBytes((ushort)data.Length).Concat(data).ToArray());
 
             return true;
         }

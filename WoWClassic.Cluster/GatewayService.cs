@@ -21,7 +21,5 @@ namespace WoWClassic.Cluster
                 Announce(GatewayServicePacketIds.RealmState, PacketHelper.Build(m_RealmState));
             }
         }
-
-
     }
 }

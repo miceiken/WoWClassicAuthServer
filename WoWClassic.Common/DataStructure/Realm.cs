@@ -17,6 +17,14 @@ namespace WoWClassic.Common.DataStructure
         private byte unk0 = 0;
     }
 
+    public enum RealmType : uint
+    {
+        Normal = 0,
+        PvP,
+        RP = 6,
+        RPPvP = 8,
+    };
+
     [Flags]
     public enum RealmFlags : byte
     {
@@ -25,14 +33,6 @@ namespace WoWClassic.Common.DataStructure
         SpecifyVersion = 4, // ?
         NewPlayers = 32,
         Recommended = 64,
-    };
-
-    public enum RealmType : uint
-    {
-        Normal = 0,
-        PvP,
-        RP = 6,
-        RPPvP = 8,
     };
 
     public static class RealmPopulationPreset

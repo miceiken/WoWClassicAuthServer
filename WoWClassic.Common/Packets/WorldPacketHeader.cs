@@ -23,5 +23,16 @@ namespace WoWClassic.Common.Packets
 
         public ushort Length { get; private set; }
         public WorldOpcodes Opcode { get; private set; }
+
+        public byte[] GetDecrypted()
+        {
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                bw.Write(Length);
+                bw.Write((uint)Opcode);
+                return ms.ToArray();
+            }
+        }
     }
 }
