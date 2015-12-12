@@ -44,10 +44,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GameObjects\BaseObject.cs" />
+    <Compile Include="GameObjects\Container.cs" />
+    <Compile Include="GameObjects\DynamicObject.cs" />
+    <Compile Include="GameObjects\GameObject.cs" />
+    <Compile Include="GameObjects\Item.cs" />
+    <Compile Include="GameObjects\Player.cs" />
+    <Compile Include="GameObjects\Unit.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WorldServer\WorldConnection.cs" />
-    <Compile Include="WorldServer\WorldServer.cs" />
+    <Compile Include="Client.cs" />
+    <Compile Include="GatewayServerConnection.cs" />
+    <Compile Include="WorldHandler.cs" />
+    <Compile Include="WorldManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

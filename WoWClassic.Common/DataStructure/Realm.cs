@@ -1,4 +1,5 @@
 ﻿using System;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.Common.DataStructure
 {
@@ -6,11 +7,14 @@ namespace WoWClassic.Common.DataStructure
     {
         public RealmType Type;
         public RealmFlags Flags;
+        [PacketString(StringTypes.CString)]
         public string Name;
+        [PacketString(StringTypes.CString)]
         public string Address;
         public float Population; // PlayerCount / MaxPlayerCount * 2
         public byte Characters;
         public RealmTimezone Timezone;
+        private byte unk0 = 0;
     }
 
     [Flags]

@@ -11,14 +11,14 @@ namespace WoWClassic.Cluster
             : base(ServiceIds.Gateway)
         { }
 
-        private Realm m_Realm;
-        public Realm Realm
+        private RealmState m_RealmState;
+        public RealmState RealmState
         {
-            get { return m_Realm; }
+            get { return m_RealmState; }
             set
             {
-                m_Realm = value;
-                Announce(GatewayServicePacketIds.UpdateRealm, PacketHelper.Build(m_Realm));
+                m_RealmState = value;
+                Announce(GatewayServicePacketIds.RealmState, PacketHelper.Build(m_RealmState));
             }
         }
 

@@ -81,7 +81,7 @@ namespace WoWClassic.Login.AuthServer
                     var command = (AuthOpcodes)br.ReadByte();
 
                     Log.WriteLine(AuthLogTypes.Packets, $"<- {command}({bytesRead})\n\t{string.Join(" ", buffer.Select(b => b.ToString("X2")))}");
-                    if (!m_CommandHandlers.ContainsKey(command) || !m_CommandHandlers[command](br, bytesRead - 1))
+                    if (!m_CommandHandlers.ContainsKey(command) || !m_CommandHandlers[command](br))
                         Log.WriteLine(AuthLogTypes.Packets, $"Failed to handle command {command}");
                 }
             }
@@ -145,7 +145,7 @@ namespace WoWClassic.Login.AuthServer
         }
 
         [PacketHandler(AuthOpcodes.AuthLogonChallenge)]
-        public bool HandleAuthLogonChallenge(BinaryReader br, int packetLength)
+        public bool HandleAuthLogonChallenge(BinaryReader br)
         {
             m_ALC = PacketHelper.Parse<C_AuthLogonChallenge>(br);
 
@@ -203,7 +203,7 @@ namespace WoWClassic.Login.AuthServer
         }
 
         [PacketHandler(AuthOpcodes.AuthLogonProof)]
-        public bool HandleLogonProof(BinaryReader br, int packetLength)
+        public bool HandleLogonProof(BinaryReader br)
         {
             m_ALP = PacketHelper.Parse<C_AuthLogonProof>(br);
 
@@ -236,14 +236,16 @@ namespace WoWClassic.Login.AuthServer
             return true;
         }
 
+
+        // https://github.com/cmangos/mangos-classic/blob/master/src/realmd/AuthSocket.cpp#L747-L852
         [PacketHandler(AuthOpcodes.AuthReconnectChallenge)]
-        public bool HandleReconnectChallenge(BinaryReader br, int packetLength)
+        public bool HandleReconnectChallenge(BinaryReader br)
         {
             return false;
         }
 
         [PacketHandler(AuthOpcodes.AuthReconnectProof)]
-        public bool HandleReconnectProof(BinaryReader br, int packetLength)
+        public bool HandleReconnectProof(BinaryReader br)
         {
             return false;
         }
@@ -251,19 +253,25 @@ namespace WoWClassic.Login.AuthServer
         public class S_RealmList
         {
             private uint unk0 = 0;
-            public uint Length;
+            public byte Length;
             public Realm[] Realms;
             private ushort unk1 = 2;
         }
 
+        // https://github.com/cmangos/mangos-classic/blob/master/src/realmd/AuthSocket.cpp#L855-L954
         [PacketHandler(AuthOpcodes.RealmList)]
-        public bool HandleRealmlist(BinaryReader br, int packetLength)
+        public bool HandleRealmlist(BinaryReader br)
         {
-            SendPacket(AuthOpcodes.RealmList, PacketHelper.Build(new S_RealmList
+            var pkt = new S_RealmList
             {
-                Length = (uint)m_Server.Service.Realms.Count,
-                Realms = m_Server.Service.Realms.ToArray()
-            }));
+                Length = (byte)m_Server.Service.RealmStates.Count,
+                Realms = m_Server.Service.RealmStates.Select(r => r.Realm).ToArray()
+            };
+
+            var data = PacketHelper.Build(pkt);
+
+
+            SendPacket(AuthOpcodes.RealmList, data);
 
             return true;
         }

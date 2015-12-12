@@ -68,11 +68,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Gateway\Character.cs" />
+    <Compile Include="Gateway\DBGateway.cs" />
     <Compile Include="Login\Account.cs" />
     <Compile Include="Login\DBLogin.cs" />
     <Compile Include="Login\Realm.cs" />
     <Compile Include="Login\Session.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="World\DBWorld.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -40,6 +40,8 @@ namespace WoWClassic.Gateway
         private int m_Seed = s_Rnd.Next();
         private AuthCrypt m_Crypt;
 
+        public ulong CharacterGUID { get; private set; }
+
         private readonly Dictionary<WorldOpcodes, CommandHandler> m_CommandHandlers;
 
         #region Packet Handler Reflection
@@ -85,12 +87,32 @@ namespace WoWClassic.Gateway
                     var header = new WorldPacketHeader(m_Crypt, br);
 
                     Log.WriteLine(GatewayLogTypes.Packets, $"<- {header.Opcode}({buffer.Length}):\n\t{string.Join(" ", buffer.Select(b => b.ToString("X2")))}");
-                    if (!m_CommandHandlers.ContainsKey(header.Opcode) || !m_CommandHandlers[header.Opcode](br, header.Length - 6))
-                        Log.WriteLine(GatewayLogTypes.Packets, $"Failed to handle command {header.Opcode}");
+                    if (!m_CommandHandlers.ContainsKey(header.Opcode) || !m_CommandHandlers[header.Opcode](br))
+                    {
+                        if (CharacterGUID == 0)
+                            throw new Exception("Packet unhandled by Gateway -- Character GUID = 0");
+                        Log.WriteLine(GatewayLogTypes.Packets, $"No handler for {header.Opcode} -- forwarding to world");
+
+                        SendWorldPacket(buffer);
+                    }
                 }
             }
-            m_Server.Clients.Remove(this);
+            m_Server.ClientConnections.Remove(this);
             Console.WriteLine("Dropped connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
+        }
+
+        private void SendWorldPacket(byte[] data)
+        {
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                bw.Write(CharacterGUID);
+                m_Crypt.Decrypt(data);
+                bw.Write(data);
+
+                // TODO: Make something better?
+                m_Server.WorldGatewayServer.ClientConnectionMap[this].SendPacket(ms.ToArray());
+            }
         }
 
         private void SendPacket(WorldOpcodes opcode, byte[] data)
@@ -107,6 +129,12 @@ namespace WoWClassic.Gateway
                 Log.WriteLine(GatewayLogTypes.Packets, $"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
                 m_Socket.Send(packet);
             }
+        }
+
+        public void SendPacket(byte[] data)
+        {
+            m_Crypt?.Encrypt(data);
+            m_Socket.Send(data);
         }
 
         #endregion
@@ -144,7 +172,7 @@ namespace WoWClassic.Gateway
         }
 
         [PacketHandler(WorldOpcodes.CMSG_PING)]
-        public bool HandlePing(BinaryReader br, int bytesRead)
+        public bool HandlePing(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_PING>(br);
             // TODO: implement ping checks
@@ -177,7 +205,7 @@ namespace WoWClassic.Gateway
         }
 
         [PacketHandler(WorldOpcodes.CMSG_AUTH_SESSION)]
-        public bool HandleAuthSession(BinaryReader br, int bytesRead)
+        public bool HandleAuthSession(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_AUTH_SESSION>(br);
 
@@ -229,7 +257,7 @@ namespace WoWClassic.Gateway
         }
 
         [PacketHandler(WorldOpcodes.CMSG_CHAR_CREATE)]
-        public bool HandleCharCreate(BinaryReader br, int bytesRead)
+        public bool HandleCharCreate(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_CREATE>(br);
 
@@ -294,7 +322,7 @@ namespace WoWClassic.Gateway
         }
 
         [PacketHandler(WorldOpcodes.CMSG_CHAR_ENUM)]
-        public bool HandleCharEnum(BinaryReader br, int bytesRead)
+        public bool HandleCharEnum(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_ENUM>(br);
 
@@ -348,47 +376,27 @@ namespace WoWClassic.Gateway
 
         #region CMSG_PLAYER_LOGIN
 
-        // https://github.com/cmangos/mangos-classic/blob/master/src/game/CharacterHandler.cpp#L417-L669
-
-
         public class CMSG_PLAYER_LOGIN
         {
             public ulong GUID;
         }
 
-        public class SMSG_LOGIN_VERIFY_WORLD
-        {
-            public uint MapID;
-            public float X, Y, Z;
-            public float Orientation;
-        }
-
-        public class SMSG_ACCOUNT_DATA_TIMES
-        {
-            public uint[] Data;
-        }
-
         // https://github.com/cmangos/mangos-classic/blob/master/src/game/Player.cpp#L16858-L16925
 
         [PacketHandler(WorldOpcodes.CMSG_PLAYER_LOGIN)]
-        public bool HandlePlayerLogin(BinaryReader br, int bytesRead)
+        public bool HandlePlayerLogin(BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_PLAYER_LOGIN>(br);
+            // TODO:
+            // - Figure out where this character spawns
+            // - Put it in the correct world
+            CharacterGUID = pkt.GUID;
 
-            SendPacket(WorldOpcodes.SMSG_LOGIN_VERIFY_WORLD, PacketHelper.Build(new SMSG_LOGIN_VERIFY_WORLD
-            {
-                MapID = 0,
-                X = -8954.42f,
-                Y = -158.558f,
-                Z = 81.8225f,
-                Orientation = 0.0f
-            }));
-
-            SendPacket(WorldOpcodes.SMSG_ACCOUNT_DATA_TIMES, PacketHelper.Build(new SMSG_ACCOUNT_DATA_TIMES { Data = new uint[32] }));
-            return true;
+            return false; // Return false so world server also receives this packet, however, beforehand world server needs to know who it is
         }
 
         #endregion
+
 
         #endregion
 

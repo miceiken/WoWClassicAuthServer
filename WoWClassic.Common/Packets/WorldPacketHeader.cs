@@ -15,6 +15,12 @@ namespace WoWClassic.Common.Packets
             Opcode = (WorldOpcodes)BitConverter.ToUInt32(new byte[] { header[2], header[3], header[4], header[5] }, 0);
         }
 
+        public WorldPacketHeader(BinaryReader br)
+        { // We assume that it's already been decrypted
+            Length = br.ReadUInt16();
+            Opcode = (WorldOpcodes)br.ReadUInt32();
+        }
+
         public ushort Length { get; private set; }
         public WorldOpcodes Opcode { get; private set; }
     }

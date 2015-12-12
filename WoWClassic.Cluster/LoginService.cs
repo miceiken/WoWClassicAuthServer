@@ -20,7 +20,7 @@ namespace WoWClassic.Cluster
             : base(ServiceIds.Login)
         { }
 
-        public List<Common.DataStructure.Realm> Realms { get; private set; } = new List<Common.DataStructure.Realm>();
+        public List<RealmState> RealmStates { get; private set; } = new List<RealmState>();
 
         public static void CreateAccount(string username, string email, string password)
         {
@@ -71,16 +71,16 @@ namespace WoWClassic.Cluster
                     .Update();
         }
 
-        [PacketHandler(GatewayServicePacketIds.UpdateRealm)]
-        public bool HandleRealmUpdate(BinaryReader br, int bytesRead)
+        [PacketHandler(GatewayServicePacketIds.RealmState)]
+        public bool HandleRealmUpdate(BinaryReader br)
         {
-            var realm = PacketHelper.Parse<Common.DataStructure.Realm>(br);
+            var realm = PacketHelper.Parse<RealmState>(br);
 
-            if (Realms.Contains(realm))
-                Realms.Remove(realm);
+            if (RealmStates.Exists(r => r.ID == realm.ID))
+                RealmStates.Remove(RealmStates.FirstOrDefault(r => r.ID == realm.ID));
 
-            Console.WriteLine("CLUSTER: Received realm '{0}' from gateway", realm.Name);
-            Realms.Add(realm);
+            Console.WriteLine($"CLUSTER: Received realm #{realm.ID} '{realm.Realm.Name}' from gateway");
+            RealmStates.Add(realm);
 
             return true;
         }

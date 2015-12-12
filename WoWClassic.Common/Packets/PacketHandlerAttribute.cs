@@ -3,9 +3,10 @@ using System.IO;
 using WoWClassic.Common.Constants;
 using WoWClassic.Common.Protocol;
 
-namespace WoWClassic.Common
+namespace WoWClassic.Common.Packets
 {
-    public delegate bool CommandHandler(BinaryReader br, int packetLength);
+    public delegate bool CommandHandler(BinaryReader br);
+    public delegate bool StaticCommandHandler<T>(T client, BinaryReader br);
 
     [AttributeUsage(AttributeTargets.Method)]
     public class PacketHandlerAttribute : Attribute

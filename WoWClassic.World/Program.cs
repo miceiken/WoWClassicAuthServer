@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Net;
-using WoWClassic.World.WorldServer;
+using WoWClassic.Common.Log;
 
 namespace WoWClassic.World
 {
@@ -11,7 +11,7 @@ namespace WoWClassic.World
 
         private static void Main(string[] args)
         {
-            Console.Title = "WoWAuthServer";
+            Console.Title = "WoWWorldServer";
 
             for (var i = 0; i < args.Length; i++)
             {
@@ -41,10 +41,14 @@ namespace WoWClassic.World
                 }
             }
 
-            var srv = new WorldServer.WorldServer();
-            var ep = new IPEndPoint(BindAddress, BindPort);
-            srv.Listen(ep);
-            Console.WriteLine("Server is now listening at {0}:{1}", ep.Address, ep.Port);
+            Log.CreateLogger<WorldLogTypes>();
+            Log.AddSubscriber(WorldLogTypes.General, new ConsoleLogSubscriber("[GENERAL] "));
+            Log.AddSubscriber(WorldLogTypes.Packets, new FileLogSubscriber("Logs/WorldPackets.txt"));
+            Log.AddSubscriber(WorldLogTypes.Packets, new ConsoleLogSubscriber("[PACKET] "));
+
+            WorldManager.Instance.Initialize();
+            // TODO: config/db stuff for realms
+            WorldManager.Instance.Service.RealmID = 1;
 
             Console.ReadKey();
         }
@@ -57,5 +61,13 @@ namespace WoWClassic.World
             arg = args[++i];
             return true;
         }
+    }
+
+    public enum WorldLogTypes
+    {
+        General,
+        Debug,
+        Packets,
+        DataStructure,
     }
 }

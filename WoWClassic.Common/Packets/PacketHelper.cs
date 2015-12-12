@@ -118,6 +118,9 @@ namespace WoWClassic.Common.Packets
 
         private static void BuildField(BinaryWriter bw, Type fieldType, object value, IEnumerable<Attribute> attributes)
         {
+            if (value == null)
+                return; // TODO: Error handling?
+
             if (fieldType.IsEnum)
                 BuildPrimitive(bw, Type.GetTypeCode(fieldType.GetEnumUnderlyingType()), value, attributes);
             else if (fieldType.IsClass && (!fieldType.IsArray && fieldType != typeof(string)))

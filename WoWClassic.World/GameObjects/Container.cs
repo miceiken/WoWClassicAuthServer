@@ -4,12 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace WoWClassic.Common.Protocol
+namespace WoWClassic.World.GameObjects
 {
-    public enum GatewayServicePacketIds : byte
+    public class Container : Item
     {
-        Announce = 1,
-
-        UpdateRealm,
     }
 }

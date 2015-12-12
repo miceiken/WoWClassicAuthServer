@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using WoWClassic.Common;
 using WoWClassic.Common.Protocol;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.Cluster
 {
@@ -59,7 +60,7 @@ namespace WoWClassic.Cluster
         private static IPEndPoint s_Remote = new IPEndPoint(s_MulticastAddress, CLUSTER_PORT);
 
 
-        private UdpClient m_Client;
+        private static UdpClient m_Client;
         private Thread m_Listener;
 
         private byte[] m_RecvBuffer = new byte[1024];
@@ -70,10 +71,13 @@ namespace WoWClassic.Cluster
 
         public void Participate()
         {
-            m_Client = new UdpClient(AddressFamily.InterNetwork) { ExclusiveAddressUse = false, MulticastLoopback = true };
-            m_Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            m_Client.Client.Bind(s_Local);
-            m_Client.JoinMulticastGroup(s_MulticastAddress);
+            if (m_Client == null)
+            {
+                m_Client = new UdpClient(AddressFamily.InterNetwork) { ExclusiveAddressUse = false, MulticastLoopback = true };
+                m_Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                m_Client.Client.Bind(s_Local);
+                m_Client.JoinMulticastGroup(s_MulticastAddress);
+            }
 
             m_Listener = new Thread(OnReceive);
             m_Listener.Start();
@@ -113,14 +117,9 @@ namespace WoWClassic.Cluster
                 {
                     var command = new ServicePacketPair(br.ReadByte(), br.ReadByte());
 
-                    if (m_CommandHandlers.ContainsKey(command))
-                    {
-                        Console.WriteLine("Command({0}): {1}:{2}", buffer.Length, Enum.GetName(typeof(ServiceIds), command.Service), Enum.GetName(s_ServicePacketIds[(ServiceIds)command.Service], command.PacketId));
-                        if (!m_CommandHandlers[command](br, buffer.Length - 2))
-                            Console.WriteLine("Failed to handle command {0}", command);
-                    }
-                    else
-                        Console.WriteLine("Command({0}): {1}:{2} (!) No handler", buffer.Length, Enum.GetName(typeof(ServiceIds), command.Service), Enum.GetName(s_ServicePacketIds[(ServiceIds)command.Service], command.PacketId));
+                    Console.WriteLine($"<- {(ServiceIds)command.Service}:{Enum.GetName(s_ServicePacketIds[(ServiceIds)command.Service], command.PacketId)}({buffer.Length})");
+                    if (!m_CommandHandlers.ContainsKey(command) || !m_CommandHandlers[command](br))
+                        Console.WriteLine("Failed to handle command");
                 }
             }
         }

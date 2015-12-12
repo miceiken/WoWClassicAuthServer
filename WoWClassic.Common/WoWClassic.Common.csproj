@@ -84,18 +84,21 @@
     <Compile Include="Crypto\SRP.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Log\Log.cs" />
-    <Compile Include="PacketHandlerAttribute.cs" />
+    <Compile Include="Packets\PacketHandlerAttribute.cs" />
     <Compile Include="GenericWriter.cs" />
     <Compile Include="Packets\PacketHelper.cs" />
     <Compile Include="Packets\WorldPacketHeader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DataStructure\Realm.cs" />
-    <Compile Include="Protocol\DatabaseServicePacketIds.cs" />
-    <Compile Include="Protocol\GatewayServicePacketIds.cs" />
-    <Compile Include="Protocol\LoginServicePacketIds.cs" />
-    <Compile Include="Protocol\WorldServicePacketIds.cs" />
-    <Compile Include="Protocol\ServiceIds.cs" />
+    <Compile Include="Protocol\Opcodes\DatabaseServicePacketIds.cs" />
+    <Compile Include="Protocol\Opcodes\GatewayServicePacketIds.cs" />
+    <Compile Include="Protocol\Opcodes\LoginServicePacketIds.cs" />
+    <Compile Include="Protocol\Opcodes\WorldServicePacketIds.cs" />
+    <Compile Include="Protocol\Opcodes\ServiceIds.cs" />
+    <Compile Include="Protocol\RealmState.cs" />
     <Compile Include="Protocol\ServicePacketPair.cs" />
+    <Compile Include="Protocol\WorldAnnounce.cs" />
+    <Compile Include="Singleton.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
