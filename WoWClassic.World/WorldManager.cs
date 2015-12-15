@@ -23,7 +23,7 @@ namespace WoWClassic.World
             Service.Participate();
         }
 
-        public Dictionary<ulong, Client> GUIDClientMap { get; private set; } = new Dictionary<ulong, Client>();
+        public Dictionary<ulong, WorldClient> GUIDClientMap { get; private set; } = new Dictionary<ulong, WorldClient>();
 
         public WorldService Service { get; private set; }
         public GatewayServerConnection Gateway { get; private set; }
@@ -40,7 +40,7 @@ namespace WoWClassic.World
 
                 var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect(new IPEndPoint(gatewayAddress, Service.RealmState.GatewayPort));
-                Gateway = new GatewayServerConnection(socket);
+                Gateway = new GatewayServerConnection(null, socket);
             }
             // TODO: What to do when server goes offline?
         }

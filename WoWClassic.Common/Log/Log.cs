@@ -24,11 +24,11 @@ namespace WoWClassic.Common.Log
         public static void WriteLine<T>(T type, string entry)
         {
             foreach (var logger in s_Loggers[Enum.GetName(typeof(T), type)]?.Subscribers)
-                logger.WriteLine(entry);
+                logger.WriteLine($"{DateTime.Now.ToString(TIMESTAMP_FORMAT)} " + entry);
         }
 
-        public static void WriteLine<T>(T type, string format, params object[] args) => WriteLine(type, $"{DateTime.Now.ToString(TIMESTAMP_FORMAT)} " + string.Format(format, args));
-        public static void WriteLine<T>(T type, params object[] args) => WriteLine(type, $"{DateTime.Now.ToString(TIMESTAMP_FORMAT)} " + string.Concat(args));
+        public static void WriteLine<T>(T type, string format, params object[] args) => WriteLine(type, string.Format(format, args));
+        public static void WriteLine<T>(T type, params object[] args) => WriteLine(type, string.Concat(args));
 
         public static void AddSubscriber<T>(T type, ILogSubscriber subscriber) => s_Loggers[Enum.GetName(typeof(T), type)].Subscribers.Add(subscriber);
         public static void RemoveSubscriber<T>(T type, ILogSubscriber subscriber) => s_Loggers[Enum.GetName(typeof(T), type)].Subscribers.Remove(subscriber);

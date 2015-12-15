@@ -11,9 +11,9 @@ using WoWClassic.Common;
 
 namespace WoWClassic.World
 {
-    public class Client
+    public class WorldClient
     {
-        public Client(ulong characterGUID)
+        public WorldClient(ulong characterGUID)
         {
             GUID = characterGUID;
         }
@@ -32,7 +32,7 @@ namespace WoWClassic.World
 
                 var packet = ms.ToArray();
                 Log.WriteLine(WorldLogTypes.Packets, $"-> {opcode}({packet.Length}):\n\t{string.Join(" ", packet.Select(b => b.ToString("X2")))}");
-                WorldManager.Instance.Gateway.SendPacket(packet);
+                WorldManager.Instance.Gateway.Send(packet);
             }
         }
 

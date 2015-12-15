@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WoWClassic.Common;
-using WoWClassic.Common.Packets;
-using WoWClassic.Common.Constants;
-using System.Reflection;
+﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using WoWClassic.Common.Constants;
+using WoWClassic.Common.Packets;
 
 namespace WoWClassic.World
 {
@@ -15,27 +11,18 @@ namespace WoWClassic.World
     {
         static WorldHandler()
         {
-            PacketHandlers = RegisterHandlers();
-        }
-
-        public static readonly Dictionary<WorldOpcodes, StaticCommandHandler<Client>> PacketHandlers;
-
-        #region Packet Handler Reflection
-
-        private static Dictionary<WorldOpcodes, StaticCommandHandler<Client>> RegisterHandlers()
-        {
-            var ret = new Dictionary<WorldOpcodes, StaticCommandHandler<Client>>();
-            var type = typeof(WorldHandler);
-            foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Public))
+            foreach (var method in typeof(WorldHandler).GetMethods(BindingFlags.Static | BindingFlags.Public))
             {
                 var attr = method.GetCustomAttributes(typeof(PacketHandlerAttribute), false).Cast<PacketHandlerAttribute>().FirstOrDefault();
                 if (attr == null) continue;
-                ret.Add((WorldOpcodes)attr.PacketId, (StaticCommandHandler<Client>)method.CreateDelegate(typeof(StaticCommandHandler<Client>), null));
+                PacketHandlers.Add((WorldOpcodes)attr.PacketId, (StaticCommandHandler<WorldClient>)method.CreateDelegate(typeof(StaticCommandHandler<WorldClient>), null));
             }
-            return ret;
         }
 
-        #endregion
+        public static Dictionary<WorldOpcodes, StaticCommandHandler<WorldClient>> PacketHandlers
+        {
+            get; private set;
+        } = new Dictionary<WorldOpcodes, StaticCommandHandler<WorldClient>>();
 
         #region CMSG_PLAYER_LOGIN
 
@@ -62,7 +49,7 @@ namespace WoWClassic.World
         // https://github.com/cmangos/mangos-classic/blob/master/src/game/Player.cpp#L16858-L16925
 
         [PacketHandler(WorldOpcodes.CMSG_PLAYER_LOGIN)]
-        public static bool HandlePlayerLogin(Client client, BinaryReader br)
+        public static bool HandlePlayerLogin(WorldClient client, BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_PLAYER_LOGIN>(br);
 

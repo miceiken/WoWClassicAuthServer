@@ -1,37 +1,33 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Linq;
 using System.Net;
-using System.Net.Sockets;
-using System.Threading;
 using WoWClassic.Cluster;
 using WoWClassic.Common.DataStructure;
+using WoWClassic.Common.Network;
 using WoWClassic.Common.Protocol;
-using System.Linq;
-using System;
 
 namespace WoWClassic.Gateway
 {
-    public class GatewayServer
+    public class GatewayServer : Server
     {
         public GatewayServer()
-        {
-            m_Listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        }
+        { }
 
-        private Socket m_Listener;
-        private Thread m_ThreadAcceptConnections;
+        protected override void AcceptCallback(IAsyncResult ar)
+        {
+            Connections.Add(new GatewayConnection(this, m_Listener.EndAccept(ar)));
+            base.AcceptCallback(ar);
+        }
 
         public GatewayService Service { get; private set; } = new GatewayService();
         public WorldGatewayServer WorldGatewayServer { get; private set; }
 
-        public List<GatewayConnection> ClientConnections { get; private set; } = new List<GatewayConnection>();
-
-        public void Listen(IPEndPoint endpoint)
+        public override void Listen(IPEndPoint endPoint)
         {
-            m_Listener.Bind(endpoint);
-            m_Listener.Listen(6600);
+            base.Listen(endPoint);
 
             // Initialize WorldGatewayServer, so world servers can connect
-            WorldGatewayServer = new WorldGatewayServer(this);
+            WorldGatewayServer = new WorldGatewayServer();
             WorldGatewayServer.Listen(new IPEndPoint(IPAddress.Any, 8090));
 
             // Announce the realm (triggering world servers to connect)
@@ -53,22 +49,6 @@ namespace WoWClassic.Gateway
                 Status = RealmStatus.Online,
                 GatewayPort = 8090
             };
-
-            m_ThreadAcceptConnections = new Thread(OnAccept);
-            m_ThreadAcceptConnections.Start();
-        }
-
-        private void OnAccept()
-        {
-            Socket accepted;
-            while ((accepted = m_Listener.Accept()) != null)
-            {
-                accepted.LingerState = new LingerOption(true, 5);
-                var client = new GatewayConnection(accepted, this);
-
-                lock (ClientConnections)
-                    ClientConnections.Add(client);
-            }
         }
 
         public void SendWorldPacket(GatewayConnection connection, byte[] data)
@@ -78,12 +58,12 @@ namespace WoWClassic.Gateway
             {
                 if (WorldGatewayServer.Connections.Count == 0)
                     throw new Exception("We have client connections, but no world servers");
-                worldServer = WorldGatewayServer.Connections.FirstOrDefault();
+                worldServer = WorldGatewayServer.Connections.Cast<WorldGatewayConnection>().FirstOrDefault();
                 if (worldServer == null)
                     throw new Exception("Can't find suitable world server for client");
                 WorldGatewayServer.ClientConnectionMap[connection] = worldServer;
             }
-            worldServer.SendPacket(data);
+            worldServer.Send(data);
         }
     }
 }

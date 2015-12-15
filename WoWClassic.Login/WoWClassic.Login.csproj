@@ -73,8 +73,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AuthServer\AuthConnection.cs" />
-    <Compile Include="AuthServer\AuthServer.cs" />
+    <Compile Include="AuthConnection.cs" />
+    <Compile Include="AuthHandler.cs" />
+    <Compile Include="AuthServer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

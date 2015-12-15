@@ -12,72 +12,38 @@ using WoWClassic.Common.Protocol;
 using WoWClassic.Common.Packets;
 using WoWClassic.Common.Constants;
 using WoWClassic.Common.Log;
+using WoWClassic.Common.Network;
 
 namespace WoWClassic.World
 {
-    public class GatewayServerConnection
+    public class GatewayServerConnection : Connection
     {
-        public GatewayServerConnection(Socket socket)
+        public GatewayServerConnection(Server server, Socket socket)
+            : base(server, socket)
+        { }
+
+        protected override int ProcessInternal(byte[] data)
         {
-            m_Socket = socket;
-
-            OnAccept();
-        }
-
-        private readonly Socket m_Socket;
-
-        private Thread m_ThreadReceive;
-        private byte[] m_RecvBuffer = new byte[1024];
-
-        #region Socket
-
-        public void OnAccept()
-        {
-            Console.WriteLine("Accepting connection from {0}", ((IPEndPoint)m_Socket.RemoteEndPoint).Address);
-
-            m_ThreadReceive = new Thread(OnReceive);
-            m_ThreadReceive.Start();
-        }
-
-        public void OnReceive()
-        {
-            int bytesRead;
-            try
+            using (var ms = new MemoryStream(data))
+            using (var br = new BinaryReader(ms))
             {
-                while ((bytesRead = m_Socket.Receive(m_RecvBuffer)) > 0)
+                try
                 {
-                    var buffer = new byte[bytesRead];
-                    Buffer.BlockCopy(m_RecvBuffer, 0, buffer, 0, bytesRead);
+                    var characterGUID = br.ReadUInt64();
+                    WorldClient client;
+                    if (!WorldManager.Instance.GUIDClientMap.TryGetValue(characterGUID, out client)) // Assume it's the first we see of this client
+                        WorldManager.Instance.GUIDClientMap.Add(characterGUID, (client = new WorldClient(characterGUID)));
 
-                    using (var ms = new MemoryStream(buffer))
-                    using (var br = new BinaryReader(ms))
-                    {
-                        var characterGUID = br.ReadUInt64();
-                        Client client;
-                        if (!WorldManager.Instance.GUIDClientMap.TryGetValue(characterGUID, out client)) // Assume it's the first we see of this client
-                            WorldManager.Instance.GUIDClientMap.Add(characterGUID, (client = new Client(characterGUID)));
+                    var header = new WorldPacketHeader(br);
 
-                        var header = new WorldPacketHeader(br);
+                    Log.WriteLine(WorldLogTypes.Packets, $"<- {header.Opcode}({data.Length}):\n\t{string.Join(" ", data.Select(b => b.ToString("X2")))}");
+                    if (!WorldHandler.PacketHandlers.ContainsKey(header.Opcode) || !WorldHandler.PacketHandlers[header.Opcode](client, br))
+                        Log.WriteLine(WorldLogTypes.Packets, $"Failed to handle command {header.Opcode}");
 
-                        Log.WriteLine(WorldLogTypes.Packets, $"<- {header.Opcode}({buffer.Length}):\n\t{string.Join(" ", buffer.Select(b => b.ToString("X2")))}");
-                        if (!WorldHandler.PacketHandlers.ContainsKey(header.Opcode) || !WorldHandler.PacketHandlers[header.Opcode](client, br))
-                            Log.WriteLine(WorldLogTypes.Packets, $"Failed to handle command {header.Opcode}");
-                    }
+                    return 8  + 2 + header.Length; // We read GUID, opcode +  header length
                 }
+                catch (EndOfStreamException) { return -1; }
             }
-            catch (SocketException e)
-            {
-
-            }
-            finally
-            {
-                // TODO: what about the connection?
-            }
-        }
-
-        public void SendPacket(byte[] data)
-        {
-            m_Socket.Send(data);
         }
 
         public void SendPacket(ulong guid, byte[] data)
@@ -87,10 +53,8 @@ namespace WoWClassic.World
             {
                 bw.Write(guid);
                 bw.Write(data);
-                SendPacket(ms.ToArray());
+                Send(ms.ToArray());
             }
         }
-
-        #endregion
     }
 }

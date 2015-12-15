@@ -72,6 +72,7 @@
   <ItemGroup>
     <Compile Include="Constants\AuthOpcodes.cs" />
     <Compile Include="Constants\AuthResult.cs" />
+    <Compile Include="Constants\AuthState.cs" />
     <Compile Include="Constants\CharacterCreationCode.cs" />
     <Compile Include="Constants\Game\WoWClass.cs" />
     <Compile Include="Constants\Game\WoWEquipSlot.cs" />
@@ -81,12 +82,19 @@
     <Compile Include="Constants\Game\WoWRace.cs" />
     <Compile Include="Crypto\ARC4.cs" />
     <Compile Include="Crypto\AuthCrypt.cs" />
+    <Compile Include="Crypto\HashUtil.cs" />
     <Compile Include="Crypto\SRP.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Log\Log.cs" />
+    <Compile Include="Network\Connection.cs" />
+    <Compile Include="Network\IConnection.cs" />
+    <Compile Include="Network\IServer.cs" />
+    <Compile Include="Network\Server.cs" />
     <Compile Include="Packets\PacketHandlerAttribute.cs" />
     <Compile Include="GenericWriter.cs" />
     <Compile Include="Packets\PacketHelper.cs" />
+    <Compile Include="Packets\PacketHelperBuild.cs" />
+    <Compile Include="Packets\PacketHelperParse.cs" />
     <Compile Include="Packets\WorldPacketHeader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DataStructure\Realm.cs" />

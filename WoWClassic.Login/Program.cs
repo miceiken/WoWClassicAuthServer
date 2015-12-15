@@ -47,14 +47,14 @@ namespace WoWClassic.Login
             Log.AddSubscriber(AuthLogTypes.Packets, new ConsoleLogSubscriber("[PACKET] "));
 
             Log.AddSubscriber(AuthLogTypes.Debug, new FileLogSubscriber("Logs/LOGINDEBUG.txt"));
-            Log.AddSubscriber(AuthLogTypes.General, new FileLogSubscriber("Logs/LoginServer.txt", "GENERAL"));
-            
+            Log.AddSubscriber(AuthLogTypes.Debug, new ConsoleLogSubscriber("[DEBUG] "));
 
-            var srv = new AuthServer.AuthServer();
+            Log.AddSubscriber(AuthLogTypes.General, new FileLogSubscriber("Logs/LoginServer.txt", "GENERAL"));
+            Log.AddSubscriber(AuthLogTypes.General, new ConsoleLogSubscriber());
+
             var ep = new IPEndPoint(BindAddress, BindPort);
-            srv.Listen(ep);
+            AuthServer.Instance.Listen(ep);
             Log.WriteLine(AuthLogTypes.General, "Server is now listening at {0}:{1}", ep.Address, ep.Port);
-            Console.WriteLine("Server is now listening at {0}:{1}", ep.Address, ep.Port);
 
             Console.ReadKey();
         }
