@@ -20,11 +20,22 @@ namespace WoWClassic.Common.Network
 
         private void ReceiveCallback(IAsyncResult ar)
         {
+
             var state = (StateObject)ar.AsyncState;
 
             int length;
-            if ((length = state.Socket.EndReceive(ar)) == 0)
-            { // Connection closed
+            try
+            {
+                if ((length = state.Socket.EndReceive(ar)) == 0)
+                {
+                    Console.WriteLine("!!! 0-length received");
+                    m_Server?.Connections.Remove(this);
+                    return;
+                }
+            }
+            catch (SocketException e)
+            {
+                Console.WriteLine($"!!! SocketException {e}");
                 m_Server?.Connections.Remove(this);
                 return;
             }
@@ -38,12 +49,16 @@ namespace WoWClassic.Common.Network
             var buffer = new byte[length];
             Buffer.BlockCopy(data, 0, buffer, 0, length);
 
-            int handled = 0, next;
-            while (handled < length)
-            {
-                if ((next = ProcessInternal(data)) == -1) break;
-                handled += next;
-            }
+            var remaining = length - ProcessInternal(buffer);
+            if (remaining > 0)
+                Console.WriteLine($"!!! Unprocessed bytes -- received {length}, {remaining} remaining");
+
+            //int handled = 0, next;
+            //while (handled < length)
+            //{
+            //    if ((next = ProcessInternal(buffer)) == -1) break;
+            //    handled += next;
+            //}
         }
 
         // Returns true if it managed to read full packet, false if not

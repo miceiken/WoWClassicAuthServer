@@ -53,6 +53,10 @@ namespace WoWClassic.Gateway
             Log.AddSubscriber(GatewayLogTypes.DataStructure, new FileLogSubscriber("Logs/DataStructure.txt"));
             Log.AddSubscriber(GatewayLogTypes.DataStructure, new ConsoleLogSubscriber("[DATASTRUCT]"));
 
+            // To make sure that the UDP multicast is received by the other servers
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Threading.Thread.Sleep(500);
+
             var srv = new GatewayServer();
             var ep = new IPEndPoint(BindAddress, BindPort);
             srv.Listen(ep);

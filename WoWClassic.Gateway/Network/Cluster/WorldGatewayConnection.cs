@@ -1,7 +1,10 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using WoWClassic.Common.Network;
+using WoWClassic.Common.Packets;
+using WoWClassic.Common.Constants;
 
 namespace WoWClassic.Gateway
 {
@@ -13,19 +16,20 @@ namespace WoWClassic.Gateway
 
         protected override int ProcessInternal(byte[] data)
         {
-            using (var ms = new MemoryStream(data))
-            using (var br = new BinaryReader(ms))
+            var packets = WorldPacket.FromBuffer(data, flags: WorldPacketFlags.GUIDPrefix | WorldPacketFlags.Outbound);
+            foreach (var pkt in packets)
             {
                 GatewayConnection client;
-                if (!((WorldGatewayServer)m_Server).GUIDClientMap.TryGetValue(br.ReadUInt64(), out client))
+                if (!((WorldGatewayServer)m_Server).GUIDClientMap.TryGetValue(pkt.GUID, out client))
                     throw new Exception("World server refers to unconnected character");
 
-                var buffer = new byte[data.Length - 8];
-                Buffer.BlockCopy(data, 7, buffer, 0, data.Length);
-                client.SendPacket(buffer);
+                // We need to reconstruct the entire packet and not just the payload, in other words, include the 4-byte (2 length, 2 opcode) header
+                var packet = new ArraySegment<byte>(pkt.Payload.Array, pkt.Payload.Offset - 4, pkt.Payload.Count + 4);
 
-                return data.Length;
+                client.SendPacket(packet.ToArray());
             }
+
+            return packets.Sum(p => p.TotalLength);
         }
 
         public void SendPacket(ulong guid, byte[] data)

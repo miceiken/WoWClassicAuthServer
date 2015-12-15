@@ -31,27 +31,27 @@ namespace WoWClassic.Gateway
 
         protected override int ProcessInternal(byte[] data)
         {
-            using (var ms = new MemoryStream(data))
-            using (var br = new BinaryReader(ms))
+            var packets = WorldPacket.FromBuffer(data, flags: WorldPacketFlags.EncryptedHeader | WorldPacketFlags.BigEndianLength, crypt: Crypt);
+            foreach (var pkt in packets)
             {
-                var header = new WorldPacketHeader(Crypt, br);
-                Log.WriteLine(GatewayLogTypes.Packets, $"<- {header.Opcode}({header.Length}):\n\t{string.Join(" ", data.Select(b => b.ToString("X2")))}");
+                Log.WriteLine(GatewayLogTypes.Packets, $"<- {pkt.Header.Opcode}({pkt.Header.Length}):\n\t{string.Join(" ", pkt.Payload.Select(b => b.ToString("X2")))}");
 
-                try
+                var buffer = pkt.Payload.ToArray();
+                using (var ms = new MemoryStream(buffer))
+                using (var br = new BinaryReader(ms))
                 {
-                    if (!GatewayHandlers.PacketHandlers.ContainsKey(header.Opcode) || !GatewayHandlers.PacketHandlers[header.Opcode](this, br))
+                    if (!GatewayHandlers.PacketHandlers.ContainsKey(pkt.Header.Opcode) || !GatewayHandlers.PacketHandlers[pkt.Header.Opcode](this, br))
                     {
                         if (CharacterGUID == 0)
                             throw new Exception("Packet unhandled by Gateway -- Character GUID = 0");
 
-                        Log.WriteLine(GatewayLogTypes.Packets, $"Forwarding {header.Opcode} to world server");
-                        SendWorldPacket(header, data);
+                        Log.WriteLine(GatewayLogTypes.Packets, $"Forwarding {pkt.Header.Opcode} to world server");
+                        SendWorldPacket(pkt.Header, buffer);
                     }
                 }
-                catch (EndOfStreamException) { return -1; }
-
-                return data.Length; // We used all the data
             }
+
+            return packets.Sum(p => p.TotalLength);
         }
 
         public void SendWorldPacket(WorldPacketHeader header, byte[] data)
