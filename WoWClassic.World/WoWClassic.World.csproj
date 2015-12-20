@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="GameObjects\BaseObject.cs" />
     <Compile Include="GameObjects\Container.cs" />
+    <Compile Include="GameObjects\Corpse.cs" />
     <Compile Include="GameObjects\DynamicObject.cs" />
     <Compile Include="GameObjects\GameObject.cs" />
     <Compile Include="GameObjects\Item.cs" />

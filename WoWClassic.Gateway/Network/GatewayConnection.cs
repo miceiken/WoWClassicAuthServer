@@ -91,6 +91,8 @@ namespace WoWClassic.Gateway
 
         public void SendPacket(byte[] data)
         {
+            // Swap header length endianness
+            Array.Reverse(data, 0, 2);
             Crypt?.Encrypt(data);
             Send(data);
         }

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using WoWClassic.Common;
 using WoWClassic.Common.Constants;
 using WoWClassic.Common.Packets;
 
@@ -67,5 +68,24 @@ namespace WoWClassic.World
         }
 
         #endregion
+
+        // Count
+        // Update
+        //   UpdateType
+
+        // UpdateType = Partial
+        // PackedGUID
+        // BlocksCount
+        // UpdateMask
+        // KeyValueDictionary
+
+        public static void SendUpdateObject(WorldClient client)
+        {
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
+            {
+                bw.Write((long)1);
+            }
+        }
     }
 }

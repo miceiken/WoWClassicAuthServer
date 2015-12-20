@@ -26,6 +26,17 @@ namespace WoWClassic.Common
         {
             return char.ToUpper(s[0]) + s.Substring(1).ToLower();
         }
+
+        public static ulong ReadPacketGUID(this BinaryReader br)
+        {
+            var mask = br.ReadByte();
+            if (mask == 0) return 0;
+            var res = 0ul;
+            for (var i = 0; i < 8; i++)
+                if ((mask & (1 << i)) > 0)
+                    res += (ulong)(br.ReadByte() << (i * 8));
+            return res;
+        }
     }
 
     public static class SRPHelperExtensions

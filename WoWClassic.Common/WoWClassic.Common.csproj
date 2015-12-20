@@ -79,8 +79,11 @@
     <Compile Include="Constants\Game\WoWClass.cs" />
     <Compile Include="Constants\Game\WoWEquipSlot.cs" />
     <Compile Include="Constants\Game\WoWGender.cs" />
+    <Compile Include="Constants\HighGUID.cs" />
+    <Compile Include="Constants\ObjectType.cs" />
     <Compile Include="Constants\PacketDirection.cs" />
     <Compile Include="Constants\ResponseCodes.cs" />
+    <Compile Include="Constants\UpdateObjectType.cs" />
     <Compile Include="Constants\WorldOpcodes.cs" />
     <Compile Include="Constants\Game\WoWRace.cs" />
     <Compile Include="Crypto\ARC4.cs" />
@@ -88,6 +91,8 @@
     <Compile Include="Crypto\HashUtil.cs" />
     <Compile Include="Crypto\RandomGenerator.cs" />
     <Compile Include="Crypto\SRP.cs" />
+    <Compile Include="DataStructure\Vector3.cs" />
+    <Compile Include="DataStructure\WoWGUID.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Log\Log.cs" />
     <Compile Include="Network\Connection.cs" />
