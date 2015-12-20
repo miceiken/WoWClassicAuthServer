@@ -12,7 +12,7 @@ namespace WoWClassic.Datastore.Login
         [Column]
         public byte[] SessionKey { get; set; }
 
-        //[Association(ThisKey = "AccountID", OtherKey = "AccountID", CanBeNull = false)]
-        //public Account Account { get; set; }
+        [Association(ThisKey = "AccountID", OtherKey = "AccountID", CanBeNull = false)]
+        public Account Account { get; set; }
     }
 }

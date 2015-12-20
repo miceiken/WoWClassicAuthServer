@@ -74,6 +74,8 @@
     <Compile Include="Constants\AuthResult.cs" />
     <Compile Include="Constants\AuthState.cs" />
     <Compile Include="Constants\CharacterCreationCode.cs" />
+    <Compile Include="Constants\CharacterDeleteCode.cs" />
+    <Compile Include="Constants\Game\Descriptors.cs" />
     <Compile Include="Constants\Game\WoWClass.cs" />
     <Compile Include="Constants\Game\WoWEquipSlot.cs" />
     <Compile Include="Constants\Game\WoWGender.cs" />
@@ -84,6 +86,7 @@
     <Compile Include="Crypto\ARC4.cs" />
     <Compile Include="Crypto\AuthCrypt.cs" />
     <Compile Include="Crypto\HashUtil.cs" />
+    <Compile Include="Crypto\RandomGenerator.cs" />
     <Compile Include="Crypto\SRP.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Log\Log.cs" />
@@ -96,6 +99,7 @@
     <Compile Include="Packets\PacketHelper.cs" />
     <Compile Include="Packets\PacketHelperBuild.cs" />
     <Compile Include="Packets\PacketHelperParse.cs" />
+    <Compile Include="Packets\PacketSegment.cs" />
     <Compile Include="Packets\WorldPacket.cs" />
     <Compile Include="Packets\WorldPacketHeader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

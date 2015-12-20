@@ -45,11 +45,11 @@ namespace WoWClassic.Common.Crypto
         public byte[] GetDecrypted(byte[] data, int offset)
         {
             var decrypted = new byte[HEADER_RECEIVE_SIZE];
-            for (var i = offset; i < offset + HEADER_RECEIVE_SIZE; i++)
+            for (var i = 0; i < HEADER_RECEIVE_SIZE; i++)
             {
                 di = (byte)(di % SessionKey.Length);
-                var x = (byte)((data[i] - dj) ^ SessionKey[di++]);
-                dj = data[i];
+                var x = (byte)((data[offset + i] - dj) ^ SessionKey[di++]);
+                dj = data[offset + i];
                 decrypted[i] = x;
             }
             return decrypted;

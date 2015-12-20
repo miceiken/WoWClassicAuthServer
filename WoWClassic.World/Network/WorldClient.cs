@@ -26,7 +26,7 @@ namespace WoWClassic.World
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write(GUID);
-                bw.Write(((ushort)(data.Length + 2)).SwitchEndian());
+                bw.Write(((ushort)(data.Length + 2)));
                 bw.Write((ushort)opcode);
                 bw.Write(data);
 

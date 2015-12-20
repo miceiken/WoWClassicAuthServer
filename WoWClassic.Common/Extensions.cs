@@ -21,6 +21,11 @@ namespace WoWClassic.Common
             Array.Resize(ref bytes, count);
             return bytes;
         }
+
+        public static string UppercaseFirst(this string s)
+        {
+            return char.ToUpper(s[0]) + s.Substring(1).ToLower();
+        }
     }
 
     public static class SRPHelperExtensions

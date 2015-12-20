@@ -25,6 +25,7 @@ namespace WoWClassic.World
         protected override int ProcessInternal(byte[] data)
         {
             var packets = WorldPacket.FromBuffer(data, WorldPacketFlags.GUIDPrefix);
+            var bytesRead = 0;
             foreach (var pkt in packets)
             {
                 WorldClient client;
@@ -38,9 +39,11 @@ namespace WoWClassic.World
                     if (!WorldHandler.PacketHandlers.ContainsKey(pkt.Header.Opcode) || !WorldHandler.PacketHandlers[pkt.Header.Opcode](client, br))
                         Log.WriteLine(WorldLogTypes.Packets, $"Failed to handle command {pkt.Header.Opcode}");
                 }
+
+                bytesRead += pkt.TotalLength;
             }
 
-            return packets.Sum(p => p.TotalLength);
+            return bytesRead;
         }
 
         public void SendPacket(ulong guid, byte[] data)

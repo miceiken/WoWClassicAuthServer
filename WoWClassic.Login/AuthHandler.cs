@@ -12,6 +12,8 @@ using WoWClassic.Common.Crypto;
 using WoWClassic.Common.DataStructure;
 using WoWClassic.Common.Log;
 using WoWClassic.Common.Packets;
+using System.Text;
+using System.Security.Cryptography;
 
 namespace WoWClassic.Login
 {
@@ -31,11 +33,13 @@ namespace WoWClassic.Login
 
         public static Dictionary<AuthOpcodes, StaticCommandHandler<AuthConnection>> PacketHandlers { get; private set; }
 
+
+
         #region AuthLogonChallenge
 
         public class C_AuthLogonChallenge
         {
-            public byte Error;
+            public AuthResult Error;
             [PacketBigEndian]
             public ushort Size;
             [PacketArrayLength(4), PacketArrayReverse]
@@ -61,7 +65,7 @@ namespace WoWClassic.Login
 
         private class S_AuthLogonChallenge
         {
-            public byte Error;
+            public AuthResult Error;
             public byte unk1;
             public byte[] ServerEphemeral;
             public byte GeneratorLength;
@@ -88,7 +92,7 @@ namespace WoWClassic.Login
             // Account doesn't exist!
             if (!LoginService.ExistsAccount(client.LogonChallenge.Identifier))
             {
-                client.SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = (byte)AuthResult.UnknownAccount }));
+                client.SendPacket(AuthOpcodes.AuthLogonChallenge, PacketHelper.Build(new S_AuthLogonChallenge { Error = AuthResult.UnknownAccount }));
                 return true;
             }
             client.SRP = LoginService.GetAccountSecurity(client.LogonChallenge.Identifier);
@@ -127,7 +131,7 @@ namespace WoWClassic.Login
 
         public class S_AuthLogonProof
         {
-            public byte Error;
+            public AuthResult Error;
             public byte[] M2;
             public uint unk2;
         }
@@ -144,7 +148,7 @@ namespace WoWClassic.Login
             // Check versions
             if (client.LogonChallenge.Build != 5875)
             {
-                client.SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = (byte)AuthResult.InvalidVersion }));
+                client.SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = AuthResult.InvalidVersion }));
                 return true;
             }
 
@@ -152,7 +156,7 @@ namespace WoWClassic.Login
             if (!client.IsAuthenticated) // TODO: Send response
             {
                 // Increment password fail counter?
-                client.SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = (byte)AuthResult.IncorrectPassword }));
+                client.SendPacket(AuthOpcodes.AuthLogonProof, PacketHelper.Build(new S_AuthLogonProof { Error = AuthResult.IncorrectPassword }));
                 return true;
             }
 
@@ -170,21 +174,68 @@ namespace WoWClassic.Login
 
         #region AuthReconnectChallenge
 
+        public class S_AuthReconnectChallenge
+        {
+            public AuthResult Error;
+            public byte[] ChallengeData;
+            private byte[] unk = new byte[16];
+        }
+
         // https://github.com/cmangos/mangos-classic/blob/master/src/realmd/AuthSocket.cpp#L747-L852
         [PacketHandler(AuthOpcodes.AuthReconnectChallenge)]
         public static bool HandleReconnectChallenge(AuthConnection client, BinaryReader br)
         {
-            return false;
+            // Packet structure is the same, except for opcode.
+            client.LogonChallenge = PacketHelper.Parse<C_AuthLogonChallenge>(br);
+
+            client.SendPacket(AuthOpcodes.AuthReconnectChallenge, PacketHelper.Build(new S_AuthReconnectChallenge
+            {
+                Error = AuthResult.Success,
+                ChallengeData = client.ChallengeData = RandomGenerator.RandomBytes(16),
+            }));
+
+            return true;
         }
 
         #endregion
 
         #region AuthReconnectProof
 
+        public class C_AuthReconnectProof
+        {
+            [PacketArrayLength(16)]
+            public byte[] ProofData;
+            [PacketArrayLength(20)]
+            public byte[] ClientProof;
+            [PacketArrayLength(20)]
+            private byte[] unk_hash;
+            private byte unk1;
+        }
+
+        public class S_AuthReconnectProof
+        {
+            public AuthResult Error;
+        }
+
         [PacketHandler(AuthOpcodes.AuthReconnectProof)]
         public static bool HandleReconnectProof(AuthConnection client, BinaryReader br)
         {
-            return false;
+            var pkt = PacketHelper.Parse<C_AuthReconnectProof>(br);
+
+            var serverProof = HashUtil.ComputeHash(
+                Encoding.ASCII.GetBytes(client.LogonChallenge.Identifier),
+                pkt.ProofData,
+                client.ChallengeData,
+                client.SRP.SessionKey.ToProperByteArray());
+            if (!serverProof.SequenceEqual(pkt.ClientProof))
+                return true; // Drop client here
+
+            client.SendPacket(AuthOpcodes.AuthReconnectProof, PacketHelper.Build(new S_AuthReconnectProof
+            {
+                Error = AuthResult.Success
+            }));
+
+            return true;
         }
 
         #endregion

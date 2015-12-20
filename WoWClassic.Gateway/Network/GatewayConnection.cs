@@ -29,9 +29,13 @@ namespace WoWClassic.Gateway
         public AuthCrypt Crypt { get; set; }
         public ulong CharacterGUID { get; set; }
 
+        public string AccountName;
+        public int AccountID;
+
         protected override int ProcessInternal(byte[] data)
         {
             var packets = WorldPacket.FromBuffer(data, flags: WorldPacketFlags.EncryptedHeader | WorldPacketFlags.BigEndianLength, crypt: Crypt);
+            var bytesRead = 0;
             foreach (var pkt in packets)
             {
                 Log.WriteLine(GatewayLogTypes.Packets, $"<- {pkt.Header.Opcode}({pkt.Header.Length}):\n\t{string.Join(" ", pkt.Payload.Select(b => b.ToString("X2")))}");
@@ -49,9 +53,11 @@ namespace WoWClassic.Gateway
                         SendWorldPacket(pkt.Header, buffer);
                     }
                 }
+
+                bytesRead += pkt.TotalLength;
             }
 
-            return packets.Sum(p => p.TotalLength);
+            return bytesRead;
         }
 
         public void SendWorldPacket(WorldPacketHeader header, byte[] data)
@@ -60,8 +66,7 @@ namespace WoWClassic.Gateway
             using (var bw = new BinaryWriter(ms))
             {
                 bw.Write(CharacterGUID);
-                // Replace header with the decrypted one
-                Buffer.BlockCopy(header.GetDecrypted(), 0, data, 0, 6);
+                bw.Write(header.GetDecrypted());
                 bw.Write(data);
 
                 ((GatewayServer)m_Server).SendWorldPacket(this, ms.ToArray());

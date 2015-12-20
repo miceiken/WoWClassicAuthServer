@@ -60,15 +60,28 @@ namespace WoWClassic.Cluster
         public static byte[] GetSessionKey(string username)
         {
             using (var db = new DBLogin())
-                return db.Account.FirstOrDefault(a => a.Username == username).SessionKey;
+                return db.Account
+                    .LoadWith(a => a.Session)
+                    .FirstOrDefault(a => a.Username == username)
+                    .Session.SessionKey;
         }
 
         public static void UpdateSessionKey(string username, byte[] key)
         {
             using (var db = new DBLogin())
-                db.Account.Where(a => a.Username == username)
-                    .Set(a => a.SessionKey, key)
-                    .Update();
+            {
+                var acctId = db.Account.FirstOrDefault(a => a.Username == username).AccountID;
+                db.Session.InsertOrUpdate(
+                    () => new Session
+                    {
+                        AccountID = acctId,
+                        SessionKey = key
+                    },
+                    s => new Session
+                    {
+                        SessionKey = key
+                    });
+            }
         }
 
         [PacketHandler(GatewayServicePacketIds.RealmState)]

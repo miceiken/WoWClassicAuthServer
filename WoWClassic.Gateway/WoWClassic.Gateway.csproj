@@ -92,6 +92,10 @@
       <Project>{d2e51e74-fa8d-4c0e-a8d3-fdbffcdef06e}</Project>
       <Name>WoWClassic.Common</Name>
     </ProjectReference>
+    <ProjectReference Include="..\WoWClassic.Datastore\WoWClassic.Datastore.csproj">
+      <Project>{1f2c7e48-d78c-442f-85bb-0db46f82500a}</Project>
+      <Name>WoWClassic.Datastore</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\System.Data.SQLite.Core.1.0.98.1\build\net451\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.98.1\build\net451\System.Data.SQLite.Core.targets')" />

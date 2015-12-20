@@ -5,10 +5,15 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using WoWClassic.Cluster;
+using WoWClassic.Common;
 using WoWClassic.Common.Constants;
 using WoWClassic.Common.Constants.Game;
 using WoWClassic.Common.Crypto;
 using WoWClassic.Common.Packets;
+using LinqToDB;
+using WoWClassic.Datastore.Gateway;
+using WoWClassic.Datastore;
+using WoWClassic.Datastore.Login;
 
 namespace WoWClassic.Gateway
 {
@@ -92,6 +97,14 @@ namespace WoWClassic.Gateway
             if (!serverDigest.SequenceEqual(pkt.ClientDigest))
                 return false;
 
+            // TODO: Move to LoginService?
+            using (var db = new DBLogin())
+            {
+                var acc = db.Account.FirstOrDefault(a => a.Username == pkt.Account);
+                client.AccountName = acc.Username;
+                client.AccountID = acc.AccountID;
+            }
+
             client.SendPacket(WorldOpcodes.SMSG_AUTH_RESPONSE, PacketHelper.Build(new SMSG_AUTH_RESPONSE
             {
                 Response = (byte)ResponseCodes.AUTH_OK,
@@ -131,11 +144,78 @@ namespace WoWClassic.Gateway
         public static bool HandleCharCreate(GatewayConnection client, BinaryReader br)
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_CREATE>(br);
+            pkt.Name = pkt.Name.UppercaseFirst();
 
-            // TODO: character creation
-            // for now, fake success!
+            using (var db = new DBGateway())
+            {
+                // TODO: If PvP-server, make sure same-faction
+                // TODO: Check for reserved names
+
+                // Check if name already is taken
+                if (db.Character.Count(c => c.Name == pkt.Name) > 0)
+                {
+                    client.SendPacket(WorldOpcodes.SMSG_CHAR_CREATE, PacketHelper.Build(new SMSG_CHAR_CREATE { Code = CharacterCreationCode.NameInUse }));
+                    return true;
+                }
+
+                db.Insert(new Character
+                {
+                    AccountID = client.AccountID,
+
+                    Name = pkt.Name,
+                    Race = (byte)pkt.Race,
+                    Class = (byte)pkt.Class,
+                    Gender = (byte)pkt.Gender,
+                    Skin = pkt.Skin,
+                    Face = pkt.Face,
+                    HairStyle = pkt.HairStyle,
+                    HairColor = pkt.HairColor,
+                    FacialHair = pkt.FacialHair,
+
+                    Level = 1,
+                    // TODO: Get spawn information based on race
+                    Zone = 12,
+                    Map = 0,
+                    X = -8954.42f,
+                    Y = -158.558f,
+                    Z = 81.8225f,
+
+                    GuildId = 0, // New characters don't have guilds!
+                    CharacterFlags = 0,
+                    FirstLogin = false, //TODO: set true
+                });
+            }
 
             client.SendPacket(WorldOpcodes.SMSG_CHAR_CREATE, PacketHelper.Build(new SMSG_CHAR_CREATE { Code = CharacterCreationCode.Success }));
+            return true;
+        }
+
+        #endregion
+
+        #region CMSG_CHAR_DELETE
+
+        public class CMSG_CHAR_DELETE
+        {
+            public ulong GUID;
+        }
+
+        public class SMSG_CHAR_DELETE
+        {
+            public CharacterDeleteCode Code;
+        }
+
+        [PacketHandler(WorldOpcodes.CMSG_CHAR_DELETE)]
+        public static bool HandleCharDelete(GatewayConnection client, BinaryReader br)
+        {
+            var pkt = PacketHelper.Parse<CMSG_CHAR_DELETE>(br);
+
+            using (var db = new DBGateway())
+            {
+                db.Character.Delete(c => c.CharacterID == pkt.GUID);
+            }
+
+            client.SendPacket(WorldOpcodes.SMSG_CHAR_DELETE, PacketHelper.Build(new SMSG_CHAR_DELETE { Code = CharacterDeleteCode.Success }));
+
             return true;
         }
 
@@ -197,50 +277,67 @@ namespace WoWClassic.Gateway
         {
             var pkt = PacketHelper.Parse<CMSG_CHAR_ENUM>(br);
 
-            // TODO: Get characters from database
+            // TODO: Move to gateway service?
 
-            var character = new CharEnumEntry
+            using (var db = new DBGateway())
             {
-                GUID = 1,
-                Name = "ChaosvexIRL",
-                Race = WoWRace.Human,
-                Class = WoWClass.Paladin,
-                Gender = WoWGender.Female,
-                Skin = 1,
-                Face = 7,
-                HairStyle = 8,
-                HairColor = 6,
-                FacialHair = 4,
+                var dbCharacters = db.Character.Where(c => c.AccountID == client.AccountID);
+                if (dbCharacters.Count() == 0)
+                {
+                    client.SendPacket(WorldOpcodes.SMSG_CHAR_ENUM, PacketHelper.Build(new SMSG_CHAR_ENUM { Length = 0 }));
+                    return true;
+                }
 
-                Level = 60,
-                Zone = 12,
-                Map = 0,
-                X = -8954.42f,
-                Y = -158.558f,
-                Z = 81.8225f,
+                var characters = new List<CharEnumEntry>();
+                foreach (var character in dbCharacters)
+                {
+                    var gameChar = new CharEnumEntry
+                    {
+                        GUID = character.CharacterID,
 
-                GuildId = 0,
-                CharacterFlags = 0,
-                FirstLogin = 0,
+                        Name = character.Name,
+                        Race = (WoWRace)character.Race,
+                        Class = (WoWClass)character.Class,
+                        Gender = (WoWGender)character.Gender,
+                        Skin = character.Skin,
+                        Face = character.Face,
+                        HairStyle = character.HairStyle,
+                        HairColor = character.HairColor,
+                        FacialHair = character.FacialHair,
 
-                PetDisplayId = 0,
-                PetLevel = 0,
-                PetFamily = 0,
+                        Level = character.Level,
+                        Zone = character.Zone,
+                        Map = character.Zone,
+                        X = character.X,
+                        Y = character.Y,
+                        Z = character.Z,
 
-                Equipment = new CharEnumEquipmentEntry[(int)WoWEquipSlot.Tabard + 1],
-                FirstBagDisplayId = 0,
-                FirstBagInventoryType = 0,
-            };
+                        GuildId = character.GuildId,
+                        CharacterFlags = character.CharacterFlags,
+                        FirstLogin = (byte)(character.FirstLogin ? 1 : 0),
 
-            for (int i = (int)WoWEquipSlot.Head; i < (int)WoWEquipSlot.Tabard + 1; i++)
-                character.Equipment[i] = new CharEnumEquipmentEntry { DisplayInfoId = 0, InventoryType = 0 };
+                        // TODO: Get rest from database
+                        PetDisplayId = 0,
+                        PetLevel = 0,
+                        PetFamily = 0,
 
+                        Equipment = new CharEnumEquipmentEntry[(int)WoWEquipSlot.Tabard + 1],
+                        FirstBagDisplayId = 0,
+                        FirstBagInventoryType = 0,
+                    };
 
-            client.SendPacket(WorldOpcodes.SMSG_CHAR_ENUM, PacketHelper.Build(new SMSG_CHAR_ENUM
-            {
-                Length = 1,
-                Characters = new CharEnumEntry[] { character },
-            }));
+                    for (int i = (int)WoWEquipSlot.Head; i < (int)WoWEquipSlot.Tabard + 1; i++)
+                        gameChar.Equipment[i] = new CharEnumEquipmentEntry { DisplayInfoId = 0, InventoryType = 0 };
+
+                    characters.Add(gameChar);
+                }
+
+                client.SendPacket(WorldOpcodes.SMSG_CHAR_ENUM, PacketHelper.Build(new SMSG_CHAR_ENUM
+                {
+                    Length = (byte)characters.Count,
+                    Characters = characters.ToArray(),
+                }));
+            }
 
             return true;
         }
@@ -271,5 +368,6 @@ namespace WoWClassic.Gateway
         }
 
         #endregion
+
     }
 }

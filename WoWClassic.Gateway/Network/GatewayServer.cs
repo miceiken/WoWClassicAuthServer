@@ -1,17 +1,22 @@
-﻿using System;
+﻿using LinqToDB;
+using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using WoWClassic.Cluster;
 using WoWClassic.Common.DataStructure;
 using WoWClassic.Common.Network;
 using WoWClassic.Common.Protocol;
+using WoWClassic.Datastore.Gateway;
 
 namespace WoWClassic.Gateway
 {
     public class GatewayServer : Server
     {
         public GatewayServer()
-        { }
+        {
+            InitTestDb();
+        }
 
         protected override void AcceptCallback(IAsyncResult ar)
         {
@@ -64,6 +69,13 @@ namespace WoWClassic.Gateway
                 WorldGatewayServer.ClientConnectionMap[connection] = worldServer;
             }
             worldServer.Send(data);
+        }
+
+        private void InitTestDb()
+        {
+            if (!File.Exists("Gateway.sqlite"))
+                using (var db = new DBGateway())
+                    db.CreateTable<Character>();
         }
     }
 }

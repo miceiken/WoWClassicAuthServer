@@ -57,6 +57,7 @@ namespace WoWClassic.Login
         public AuthHandler.C_AuthLogonChallenge LogonChallenge { get; set; }
         public AuthHandler.C_AuthLogonProof LogonProof { get; set; }
         public SRP SRP { get; set; }
+        public byte[] ChallengeData { get; set; }
 
         public bool IsAuthenticated
         {

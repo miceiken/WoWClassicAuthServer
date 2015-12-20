@@ -30,8 +30,13 @@ namespace WoWClassic.Login
         private void InitTestDb()
         {
             if (!File.Exists("Login.sqlite"))
+            {
                 using (var db = new DBLogin())
+                {
                     db.CreateTable<Account>();
+                    db.CreateTable<Session>();
+                }
+            }
 
             if (!LoginService.ExistsAccount("testuser"))
                 LoginService.CreateAccount("testuser", "test@test.com", "TestPass");

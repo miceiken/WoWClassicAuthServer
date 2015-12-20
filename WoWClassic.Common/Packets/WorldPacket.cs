@@ -20,42 +20,55 @@ namespace WoWClassic.Common.Packets
         {
             using (var ms = new MemoryStream(buffer))
             using (var br = new BinaryReader(ms))
+            using (var bw = new BinaryWriter(ms))
             {
                 while (ms.Position < buffer.Length)
                 {
-                    var start = ms.Position;
                     var pkt = new WorldPacket();
                     if (flags.HasFlag(WorldPacketFlags.GUIDPrefix))
+                    {
                         pkt.GUID = br.ReadUInt64();
+                        pkt.TotalLength += 8;
+                    }
 
                     pkt.Header = new WorldPacketHeader();
+
+                    var headerSize = flags.HasFlag(WorldPacketFlags.Outbound) ? 4 : 6;
+                    var headerBytes = br.ReadBytes(headerSize);
+                    pkt.TotalLength += headerSize;
+
                     if (flags.HasFlag(WorldPacketFlags.EncryptedHeader) && crypt != null)
                     {
                         // We do a null check, because the first received world packet is NOT encrypted
-                        ms.Write(crypt.GetDecrypted(buffer, (int)ms.Position), (int)ms.Position, 6);
-                        ms.Position -= 6;
+                        //Console.WriteLine($"Encrypted: {string.Join(" ", headerBytes.Select(b => b.ToString("X2")))}");
+                        crypt.Decrypt(headerBytes);
+                        bw.Seek(-6, SeekOrigin.Current);
+                        bw.Write(headerBytes);
+                        //Console.WriteLine($"Decrypted: {string.Join(" ", headerBytes.Select(b => b.ToString("X2")))}");
                     }
 
+                    pkt.Header.Length = BitConverter.ToUInt16(headerBytes, 0);
                     if (flags.HasFlag(WorldPacketFlags.BigEndianLength)) // Client sends 6 byte header (4-byte opcode, 2-byte length)
-                        pkt.Header.Length = BitConverter.ToUInt16(br.ReadBytes(2).Reverse().ToArray(), 0); // TODO: eew?
-                    else
-                        pkt.Header.Length = br.ReadUInt16();
+                        pkt.Header.Length = pkt.Header.Length.SwitchEndian(); // TODO: eew?
+
+                    //Console.WriteLine($"Length: {pkt.Header.Length}");
+
 
                     // This means we have received a partial packet, can't pass that on
-                    if ((ms.Position + pkt.Header.Length) > buffer.Length)
+                    if (((ms.Position - headerSize + 2) + pkt.Header.Length) > buffer.Length)
                         break;
 
-                    if (flags.HasFlag(WorldPacketFlags.Outbound))
-                        pkt.Header.Opcode = (WorldOpcodes)br.ReadUInt16();
-                    else
-                        pkt.Header.Opcode = (WorldOpcodes)br.ReadUInt32();
+                    pkt.Header.Opcode = flags.HasFlag(WorldPacketFlags.Outbound) ?
+                        (WorldOpcodes)BitConverter.ToUInt16(headerBytes, 2) : (WorldOpcodes)BitConverter.ToUInt32(headerBytes, 2);
+                    //Console.WriteLine($"Opcode: {pkt.Header.Opcode}");
 
-                    pkt.Payload = new ArraySegment<byte>(buffer, (int)ms.Position, pkt.Header.Length - (flags.HasFlag(WorldPacketFlags.Outbound) ? 2 : 4));
-                    pkt.TotalLength = (int)(pkt.Header.Length - start);
+                    var payloadLength = pkt.Header.Length - (flags.HasFlag(WorldPacketFlags.Outbound) ? 2 : 4);
+                    pkt.TotalLength += payloadLength;
+                    pkt.Payload = new ArraySegment<byte>(buffer, (int)ms.Position, payloadLength);
 
                     yield return pkt;
 
-                    ms.Seek(pkt.Header.Length, SeekOrigin.Current);
+                    ms.Seek(payloadLength, SeekOrigin.Current);
                 }
             }
         }
