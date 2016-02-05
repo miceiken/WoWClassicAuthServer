@@ -45,6 +45,23 @@ namespace WoWClassic.Common.DataStructure
 
         public ObjectType ObjectType => s_GUIDObjectMap[HighGUIDType];
 
+        public byte[] ToPacked()
+        {
+            var guid = GUID;
+            var packed = new List<byte>();
+            byte c = 0;
+            for (byte i = 0; guid > 0; i++)
+            {
+                if ((guid & 0xFF) > 0)
+                {
+                    packed[0] |= (byte)(1 << i);
+                    packed[c++] = (byte)(guid & 0xFF);
+                }
+                guid >>= 8;
+            }
+            return packed.GetRange(0, c).ToArray();
+        }
+
         private static readonly Dictionary<HighGUIDType, ObjectType> s_GUIDObjectMap = new Dictionary<HighGUIDType, ObjectType>()
         {
             [HighGUIDType.Item] = ObjectType.Item,

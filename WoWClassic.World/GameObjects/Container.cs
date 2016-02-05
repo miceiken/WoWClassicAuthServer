@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using WoWClassic.Common.Constants;
+using WoWClassic.Common.Constants.Game;
 using WoWClassic.Common.DataStructure;
 
 namespace WoWClassic.World.GameObjects
@@ -25,5 +26,21 @@ namespace WoWClassic.World.GameObjects
         { }
 
         public override ObjectType Type => ObjectType.Container;
+
+        public override byte[] GetDescriptorFieldFor(Enum descriptor, Player target)
+        {
+            switch ((ContainerFields)descriptor)
+            {
+                case ContainerFields.CONTAINER_FIELD_NUM_SLOTS:
+                    break;
+                case ContainerFields.CONTAINER_ALIGN_PAD:
+                    break;
+                case ContainerFields.CONTAINER_FIELD_SLOT_1:
+                    break;
+                case ContainerFields.CONTAINER_FIELD_SLOT_LAST:
+                    break;
+            }
+            return base.GetDescriptorFieldFor(descriptor, target);
+        }
     }
 }
